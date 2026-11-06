@@ -97,6 +97,7 @@ const DIZIONARIO = {
     classificaApparente: "Classifica Apparente (Punti Successo)",
     classificaReale: "Classifica Reale (Punti Misericordia)",
     moneteMedieEtico: "Monete Medie per Profilo Etico",
+    successoMedieEtico: "Punti Successo Medi per Profilo Etico",
     misericordiaMedieEtico: "Misericordia Media per Profilo Etico",
     configEconomica: "Configurazione Economica & Regia",
     numSquadreTappeTitolo: "Numero di Squadre e Tappe (Senza Turni di Riposo)",
@@ -115,7 +116,8 @@ const DIZIONARIO = {
     moneteEgoistaLabel: "Monete (Vittoria Egoista)",
     puntiSolidaleLabel: "Punti Successo (Vittoria Solidale)",
     moneteSolidaleLabel: "Monete (Vittoria Solidale)",
-    applicaResetta: "Applica e Resetta",
+    applicaResetta: "Applica e Salva Impostazioni",
+    ripristinaDefault: "Ripristina Default",
     teamPrefix: "Squadra",
     eticaNames: { VIRTUOSA: "VIRTUOSA", OPPORTUNISTA: "OPPORTUNISTA", EGOISTA: "EGOISTA" },
     skillNames: { ALTA: "ALTA", MEDIA: "MEDIA", BASSA: "BASSA" },
@@ -179,6 +181,7 @@ const DIZIONARIO = {
     classificaApparente: "表观排行榜（成功点数）",
     classificaReale: "真实排行榜（仁慈点数）",
     moneteMedieEtico: "各伦理档案平均金币",
+    successoMedieEtico: "各伦理档案平均成功点数",
     misericordiaMedieEtico: "各伦理档案平均仁慈",
     configEconomica: "经济与导演配置",
     numSquadreTappeTitolo: "队伍数与阶段数（无轮空）",
@@ -197,11 +200,12 @@ const DIZIONARIO = {
     moneteEgoistaLabel: "金币（利己胜利）",
     puntiSolidaleLabel: "成功点数（互助胜利）",
     moneteSolidaleLabel: "金币（互助胜利）",
-    applicaResetta: "应用并重置",
+    applicaResetta: "应用并保存配置",
+    ripristinaDefault: "恢复默认设置",
     teamPrefix: "队伍",
     eticaNames: { VIRTUOSA: "美德", OPPORTUNISTA: "机会主义", EGOISTA: "利己" },
     skillNames: { ALTA: "高", MEDIA: "中", BASSA: "低" },
-      descSquadra: (skill) => `具备${skill === 'ALTA' ? '高' : skill === 'MEDIA' ? '中' : '低'}能力的小游戏队伍。`,
+    descSquadra: (skill) => `具备${skill === 'ALTA' ? '高' : skill === 'MEDIA' ? '中' : '低'}能力的小游戏队伍。`,
     logs: {
       inOrario: (b) => `⚡ 准时 (+${b} 金币)`,
       inRitardo: "⏰ 迟到 (0 金币)",
@@ -227,6 +231,26 @@ const DIZIONARIO = {
   }
 };
 
+const DEFAULT_PARAMS = {
+  numSquadre: 14,
+  moneteBase: 0,
+  bonusPuntualita: 4,
+  probabilitaPuntualitaPerc: 70, 
+  costoIngressoTappa: 10,
+  costoTentazione: 5,
+  costoCrisiTappa3: 30,
+  costoCrisiTappa7: 50,
+  valoreDecimaFissa: 5,
+  moneteDaVenditaSuccesso: 40,
+  puntiVittoriaEgoista: 2,
+  moneteVittoriaEgoista: 30,
+  puntiVittoriaSolidale: 1,
+  moneteVittoriaSolidale: 15,
+  eticitaGlobalePerc: 0,
+  bonusVantaggio: 2.0,
+  costoMisericordiaTentazione: 2
+};
+
 const generateDefaultArchetipi = (count, lang) => {
   return Array.from({ length: count }, (_, i) => {
     const eticaBase = i % 3 === 0 ? "VIRTUOSA" : i % 3 === 1 ? "OPPORTUNISTA" : "EGOISTA";
@@ -247,25 +271,41 @@ export default function App() {
   const [lang, setLang] = useState('it');
   const t = DIZIONARIO[lang];
 
-  const [params, setParams] = useState({
-    numSquadre: 14,
-    moneteBase: 30,
-    bonusPuntualita: 4,
-    probabilitaPuntualitaPerc: 70, 
-    costoIngressoTappa: 10,
-    costoTentazione: 10,
-    costoCrisiTappa3: 40,
-    costoCrisiTappa7: 40,
-    valoreDecimaFissa: 5,
-    moneteDaVenditaSuccesso: 40,
-    puntiVittoriaEgoista: 2,
-    moneteVittoriaEgoista: 30,
-    puntiVittoriaSolidale: 1,
-    moneteVittoriaSolidale: 10,
-    eticitaGlobalePerc: 0,
-    bonusVantaggio: 2.0,
-    costoMisericordiaTentazione: 2
+  const [params, setParams] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simulatore_squadre_params');
+      if (saved) {
+        return { ...DEFAULT_PARAMS, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      console.error("Impossibile caricare parametri da localStorage", e);
+    }
+    return DEFAULT_PARAMS;
   });
+
+  const [configCategory, setConfigCategory] = useState('struttura');
+
+  const saveParamsToLocalStorage = useCallback((newParams) => {
+    try {
+      localStorage.setItem('simulatore_squadre_params', JSON.stringify(newParams));
+    } catch (e) {
+      console.error("Impossibile salvare in localStorage", e);
+    }
+  }, []);
+
+  const updateSingleParam = (key, val) => {
+    setParams(prev => {
+      const next = { ...prev, [key]: Number(val) };
+      saveParamsToLocalStorage(next);
+      return next;
+    });
+  };
+
+  const handleResetToDefault = () => {
+    setParams(DEFAULT_PARAMS);
+    saveParamsToLocalStorage(DEFAULT_PARAMS);
+    setArchetipiConfig(generateDefaultArchetipi(DEFAULT_PARAMS.numSquadre, lang));
+  };
 
   const maxTappe = useMemo(() => {
     if (params.numSquadre === 12) return 6;
@@ -283,7 +323,9 @@ export default function App() {
 
   const handleSelectNumSquadre = (count) => {
     if (![12, 14, 16].includes(count)) return;
-    setParams(prev => ({ ...prev, numSquadre: count }));
+    const nextParams = { ...params, numSquadre: count };
+    setParams(nextParams);
+    saveParamsToLocalStorage(nextParams);
     setArchetipiConfig(generateDefaultArchetipi(count, lang));
   };
 
@@ -369,18 +411,11 @@ export default function App() {
   }, [getEticaEffettivaSquadra, lang]);
 
   const scheduleMatchmaking = useMemo(() => {
-    const n = params.numSquadre; // es. 14 squadre
-    const numRounds = maxTappe;   // es. 7 tappe/round
-    const numMatchesPerRound = n / 2; // 7 partite per round
+    const n = params.numSquadre;
+    const numRounds = maxTappe;
+    const numMatchesPerRound = n / 2;
     const rounds = [];
 
-    // Algoritmo Round-Robin valido (Berger / Polygon Method)
-    // Garantisce che ad ogni Round:
-    // 1. Ogni squadra gioca esattamente 1 partita.
-    // 2. Ciascuna partita del Round è assegnata a una Tappa diversa (senza sovrapposizioni).
-    // 3. Nessuna squadra gioca nella stessa Tappa più di una volta.
-
-    // 1. Genera gli accoppiamenti Round-Robin per tutte le giornate
     const baseRounds = [];
     const teamIds = Array.from({ length: n }, (_, i) => i + 1);
 
@@ -392,20 +427,13 @@ export default function App() {
         roundMatches.push({ teamAId: teamA, teamBId: teamB });
       }
       baseRounds.push(roundMatches);
-      
-      // Ruota le squadre mantenendo fissa la prima (indice 0)
       teamIds.splice(1, 0, teamIds.pop());
     }
 
-    // 2. Assegna ad ogni match di ciascun Round una Tappa univoca,
-    // garantendo che nessuna squadra ripeta la stessa Tappa.
     for (let r = 0; r < numRounds; r++) {
       const matchesWithTappe = [];
-      const usedTappeInRound = new Set();
-      const teamTappaTracker = rounds.flatMap(rd => rd.matches); // Dati precedenti per verificare tappe già giocate
 
       baseRounds[r].forEach((match, matchIdx) => {
-        // Assegnazione Tappa ciclica garantita e univoca per il Round
         let tappaId = ((matchIdx + r) % numMatchesPerRound) + 1;
         
         matchesWithTappe.push({
@@ -473,19 +501,24 @@ export default function App() {
   }, [params.eticitaGlobalePerc, params.numSquadre, getDatiDinamiciSquadra, lang, t]);
 
   const calculateWinProbability = (teamA, teamB, cedeA, cedeB) => {
-    // Valori ricalibrati per avere il 70% di probabilità tra livelli contigui (Media vs Bassa = 70%, Alta vs Media = 70%)
-    const skillValues = { ALTA: 1.633, MEDIA: 0.70, BASSA: 0.30 };
-    
-    let baseA = skillValues[teamA.skill] || 0.70;
-    let baseB = skillValues[teamB.skill] || 0.70;
-    
-    // Vantaggio schiacciante leggendo il parametro aggiornato (default 2.0)
-    const bonus = params.bonusVantaggio !== undefined ? params.bonusVantaggio : 2.0;
-    let scoreA = baseA + (cedeA ? bonus : 0);
-    let scoreB = baseB + (cedeB ? bonus : 0);
+    if (cedeA && !cedeB) return 0.80;
+    if (!cedeA && cedeB) return 0.20;
 
-    const total = scoreA + scoreB;
-    return scoreA / total;
+    const skillA = teamA.skill;
+    const skillB = teamB.skill;
+
+    if (skillA === skillB) return 0.50;
+
+    if (skillA === 'ALTA' && skillB === 'MEDIA') return 0.60;
+    if (skillA === 'MEDIA' && skillB === 'ALTA') return 0.40;
+
+    if (skillA === 'MEDIA' && skillB === 'BASSA') return 0.60;
+    if (skillA === 'BASSA' && skillB === 'MEDIA') return 0.40;
+
+    if (skillA === 'ALTA' && skillB === 'BASSA') return 0.70;
+    if (skillA === 'BASSA' && skillB === 'ALTA') return 0.30;
+
+    return 0.50;
   };
 
   const simulateSingleTappa = (tappaNumber, currentSquadreMap) => {
@@ -532,13 +565,18 @@ export default function App() {
           t.monete -= params.costoIngressoTappa;
           log.push(DIZIONARIO[lang].logs.costoIngresso(params.costoIngressoTappa));
         } else {
-          if (t.puntiSuccesso > 1) {
+          if (t.puntiSuccesso > 0) {
             t.puntiSuccesso -= 1;
-            const guadagnoNetto = params.moneteDaVenditaSuccesso - params.costoIngressoTappa;
-            t.monete += guadagnoNetto;
+            t.monete += params.moneteDaVenditaSuccesso;
             log.push(DIZIONARIO[lang].logs.vendutoSuccesso(params.moneteDaVenditaSuccesso));
+            // Effettua subito il pagamento dell'ingresso dopo la vendita
+            t.monete -= params.costoIngressoTappa;
+            log.push(DIZIONARIO[lang].logs.costoIngresso(params.costoIngressoTappa));
           } else {
-            if (opp.monete >= 10) {
+            // Calcolo dell'importo strettamente necessario per coprire l'ingresso
+            const mancanteIngresso = params.costoIngressoTappa - t.monete;
+
+            if (opp.monete >= mancanteIngresso) {
               let accettaAiuto = false;
               if (oppEtica === 'VIRTUOSA') {
                 accettaAiuto = true;
@@ -549,19 +587,23 @@ export default function App() {
               }
 
               if (accettaAiuto) {
-                opp.monete -= 10;
+                opp.monete -= mancanteIngresso;
                 opp.puntiMisericordia += 1;
-                t.monete += (10 - params.costoIngressoTappa);
-                log.push(DIZIONARIO[lang].logs.prestitoAccettato(10, opp.nome));
+                t.monete += mancanteIngresso;
+                log.push(DIZIONARIO[lang].logs.prestitoAccettato(mancanteIngresso, opp.nome));
               } else {
                 opp.puntiMisericordia -= 1;
-                t.monete += (10 - params.costoIngressoTappa);
-                log.push(DIZIONARIO[lang].logs.prestitoRifiutato(10, opp.nome));
+                t.monete += mancanteIngresso;
+                log.push(DIZIONARIO[lang].logs.prestitoRifiutato(mancanteIngresso, opp.nome));
               }
             } else {
-              t.monete += (10 - params.costoIngressoTappa);
-              log.push(DIZIONARIO[lang].logs.prestitoRifiutato(10, opp.nome));
+              t.monete += mancanteIngresso;
+              log.push(DIZIONARIO[lang].logs.prestitoRifiutato(mancanteIngresso, opp.nome));
             }
+
+            // Successivamente alla donazione/intervento, paga regolarmente l'ingresso
+            t.monete -= params.costoIngressoTappa;
+            log.push(DIZIONARIO[lang].logs.costoIngresso(params.costoIngressoTappa));
           }
         }
       });
@@ -677,7 +719,6 @@ export default function App() {
         logB.push(DIZIONARIO[lang].logs.tentazioneAcquistata(params.costoTentazione, penalitaMisericordia));
       }
 
-      // CALCOLO PROBABILITÀ DI VITTORIA MINIGIOCO CON BONUS +2.0
       const winProbA = calculateWinProbability(teamA, teamB, cedeA, cedeB);
       const winProbAPerc = Math.round(winProbA * 100);
       const winProbBPerc = 100 - winProbAPerc;
@@ -703,7 +744,7 @@ export default function App() {
           : true;
       } else if (winnerEticaEff === 'OPPORTUNISTA') {
         if (winnerHaUsatoTentazione) {
-          sceglieSolidale = winner.monete >= 40;
+          sceglieSolidale = winner.monete >= 20;
         } else {
           const probAltaSolidale = Math.min(0.95, Math.max(0.65, 0.80 + (params.eticitaGlobalePerc / 500)));
           sceglieSolidale = Math.random() < probAltaSolidale;
@@ -730,7 +771,7 @@ export default function App() {
         [ { t: teamA, log: logA, eticaEff: eticaEffettivaA }, { t: teamB, log: logB, eticaEff: eticaEffettivaB } ].forEach(({ t, log, eticaEff }) => {
           if (t.haSceltoDiCredere) {
             const decima = params.valoreDecimaFissa;
-            const opportunistaInCrisi = eticaEff === 'OPPORTUNISTA' && t.monete < 5;
+            const opportunistaInCrisi = eticaEff === 'OPPORTUNISTA' && t.monete < 15;
 
             if (!opportunistaInCrisi && t.monete >= decima) {
               t.monete -= decima;
@@ -834,6 +875,7 @@ export default function App() {
         const sqs = h.squadre.filter(s => s.etica === etica);
         if (sqs.length > 0) {
           item[`${etica}_monete`] = Math.round(sqs.reduce((a, c) => a + c.monete, 0) / sqs.length);
+          item[`${etica}_successo`] = Number((sqs.reduce((a, c) => a + c.puntiSuccesso, 0) / sqs.length).toFixed(1));
           item[`${etica}_misericordia`] = Number((sqs.reduce((a, c) => a + c.puntiMisericordia, 0) / sqs.length).toFixed(1));
         }
       });
@@ -1212,8 +1254,8 @@ export default function App() {
 
         {/* TAB 4. GRAFICI */}
         {activeTab === 'grafici' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
                 <BarChart2 className="w-4 h-4 text-amber-400" /> {t.moneteMedieEtico}
               </h3>
@@ -1233,7 +1275,27 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-4">
+            <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <Award className="w-4 h-4 text-indigo-400" /> {t.successoMedieEtico}
+              </h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="tappa" stroke="#94a3b8" />
+                    <YAxis stroke="#94a3b8" />
+                    <Tooltip contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '16px' }} />
+                    <Legend />
+                    <Line type="monotone" dataKey="VIRTUOSA_successo" name={t.virtuoseLabel} stroke="#10B981" strokeWidth={2.5} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="EGOISTA_successo" name={t.egoisteLabel} stroke="#EF4444" strokeWidth={2.5} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="OPPORTUNISTA_successo" name={t.opportunisteLabel} stroke="#F59E0B" strokeWidth={2.5} dot={{ r: 4 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
                 <Heart className="w-4 h-4 text-emerald-400" /> {t.misericordiaMedieEtico}
               </h3>
@@ -1257,154 +1319,192 @@ export default function App() {
 
         {/* TAB 5. CONFIGURAZIONE */}
         {activeTab === 'impostazioni' && (
-          <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl max-w-3xl mx-auto space-y-6">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2 pb-3 border-b border-slate-800">
-              <Settings className="w-5 h-5 text-indigo-400" /> {t.configEconomica}
-            </h2>
-
-            <div className="bg-slate-950/80 p-5 rounded-2xl border border-indigo-500/30 shadow-inner space-y-4">
+          <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl max-w-4xl mx-auto space-y-6">
+            <div className="flex flex-wrap justify-between items-center pb-4 border-b border-slate-800 gap-4">
               <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Users className="w-4 h-4 text-indigo-400" /> {t.numSquadreTappeTitolo}
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">{t.numSquadreTappeDesc}</p>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-indigo-400" /> {t.configEconomica}
+                </h2>
+                <p className="text-xs text-emerald-400 mt-1 flex items-center gap-1 font-medium">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Le impostazioni vengono salvate automaticamente per le prossime sessioni.
+                </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 pt-1">
-                {[12, 14, 16].map(count => {
-                  const tappe = count === 12 ? 6 : count === 14 ? 7 : 8;
-                  const isSelected = params.numSquadre === count;
-                  return (
-                    <button
-                      key={count}
-                      onClick={() => handleSelectNumSquadre(count)}
-                      className={`p-3.5 rounded-2xl border text-center transition cursor-pointer flex flex-col items-center justify-center ${
-                        isSelected 
-                          ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500/50' 
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                      }`}
-                    >
-                      <span className="text-lg font-black text-white">{t.squadreCountLabel(count)}</span>
-                      <span className="text-xs text-indigo-400 font-extrabold mt-0.5">{t.tappeCountLabel(tappe)}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <button
+                onClick={handleResetToDefault}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl flex items-center gap-2 border border-slate-700 transition cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> {t.ripristinaDefault}
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.moneteBaseLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.moneteBase} 
-                  onChange={e => setParams({...params, moneteBase: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.decimaFedeLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.valoreDecimaFissa} 
-                  onChange={e => setParams({...params, valoreDecimaFissa: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.costoIngressoLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.costoIngressoTappa} 
-                  onChange={e => setParams({...params, costoIngressoTappa: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.costoTentazioneLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.costoTentazione} 
-                  onChange={e => setParams({...params, costoTentazione: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.costoCrisiIntermediaLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.costoCrisiTappa3} 
-                  onChange={e => setParams({...params, costoCrisiTappa3: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.costoCrisiLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.costoCrisiTappa7} 
-                  onChange={e => setParams({...params, costoCrisiTappa7: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.bonusPuntualitaLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.bonusPuntualita} 
-                  onChange={e => setParams({...params, bonusPuntualita: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.moneteVenditaSuccessoLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.moneteDaVenditaSuccesso} 
-                  onChange={e => setParams({...params, moneteDaVenditaSuccesso: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.puntiEgoistaLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.puntiVittoriaEgoista} 
-                  onChange={e => setParams({...params, puntiVittoriaEgoista: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.moneteEgoistaLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.moneteVittoriaEgoista} 
-                  onChange={e => setParams({...params, moneteVittoriaEgoista: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.puntiSolidaleLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.puntiVittoriaSolidale} 
-                  onChange={e => setParams({...params, puntiVittoriaSolidale: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
-                <label className="font-semibold text-slate-300 block mb-1.5">{t.moneteSolidaleLabel}</label>
-                <input 
-                  type="number" 
-                  value={params.moneteVittoriaSolidale} 
-                  onChange={e => setParams({...params, moneteVittoriaSolidale: Number(e.target.value)})}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-indigo-500"
-                />
-              </div>
+            {/* SELEZIONE CATEGORIA CONFIGURAZIONE */}
+            <div className="flex gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
+              {[
+                { id: 'struttura', label: 'Struttura & Squadre', icon: Users },
+                { id: 'economia', label: 'Economia Base', icon: Scale },
+                { id: 'crisi', label: 'Tentazioni & Crisi', icon: Flame },
+                { id: 'premi', label: 'Minigiochi & Esiti', icon: Award }
+              ].map(cat => {
+                const Icon = cat.icon;
+                const isActive = configCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setConfigCategory(cat.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
+                      isActive 
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' 
+                        : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {cat.label}
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="pt-4 border-t border-slate-800 flex justify-end">
-              <button onClick={initializeTeams} className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition active:scale-95 cursor-pointer">
+            {/* CATEGORIA 1: STRUTTURA */}
+            {configCategory === 'struttura' && (
+              <div className="space-y-4">
+                <div className="bg-slate-950/80 p-5 rounded-2xl border border-indigo-500/30 shadow-inner space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Users className="w-4 h-4 text-indigo-400" /> {t.numSquadreTappeTitolo}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">{t.numSquadreTappeDesc}</p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 pt-1">
+                    {[12, 14, 16].map(count => {
+                      const tappe = count === 12 ? 6 : count === 14 ? 7 : 8;
+                      const isSelected = params.numSquadre === count;
+                      return (
+                        <button
+                          key={count}
+                          onClick={() => handleSelectNumSquadre(count)}
+                          className={`p-3.5 rounded-2xl border text-center transition cursor-pointer flex flex-col items-center justify-center ${
+                            isSelected 
+                              ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500/50' 
+                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                          }`}
+                        >
+                          <span className="text-lg font-black text-white">{t.squadreCountLabel(count)}</span>
+                          <span className="text-xs text-indigo-400 font-extrabold mt-0.5">{t.tappeCountLabel(tappe)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* CONTROL INPUT REUSABLE RENDER */}
+            {configCategory !== 'struttura' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                {configCategory === 'economia' && [
+                  { key: 'moneteBase', label: t.moneteBaseLabel, step: 5, min: 0 },
+                  { key: 'costoIngressoTappa', label: t.costoIngressoLabel, step: 1, min: 0 },
+                  { key: 'bonusPuntualita', label: t.bonusPuntualitaLabel, step: 1, min: 0 },
+                  { key: 'valoreDecimaFissa', label: t.decimaFedeLabel, step: 1, min: 0 },
+                  { key: 'moneteDaVenditaSuccesso', label: t.moneteVenditaSuccessoLabel, step: 5, min: 0 }
+                ].map(item => (
+                  <div key={item.key} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                    <label className="font-semibold text-slate-300 block mb-2">{item.label}</label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateSingleParam(item.key, Math.max(item.min, params[item.key] - item.step))}
+                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
+                      >
+                        -
+                      </button>
+                      <input 
+                        type="number" 
+                        value={params[item.key]} 
+                        onChange={e => updateSingleParam(item.key, e.target.value)}
+                        className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-center text-white font-extrabold text-sm focus:outline-none focus:border-indigo-500"
+                      />
+                      <button
+                        onClick={() => updateSingleParam(item.key, params[item.key] + item.step)}
+                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {configCategory === 'crisi' && [
+                  { key: 'costoTentazione', label: t.costoTentazioneLabel, step: 1, min: 0 },
+                  { key: 'costoMisericordiaTentazione', label: "Perdita Misericordia da Tentazione", step: 1, min: 0 },
+                  { key: 'costoCrisiTappa3', label: t.costoCrisiIntermediaLabel, step: 5, min: 0 },
+                  { key: 'costoCrisiTappa7', label: t.costoCrisiLabel, step: 5, min: 0 }
+                ].map(item => (
+                  <div key={item.key} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                    <label className="font-semibold text-slate-300 block mb-2">{item.label}</label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateSingleParam(item.key, Math.max(item.min, params[item.key] - item.step))}
+                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
+                      >
+                        -
+                      </button>
+                      <input 
+                        type="number" 
+                        value={params[item.key]} 
+                        onChange={e => updateSingleParam(item.key, e.target.value)}
+                        className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-center text-white font-extrabold text-sm focus:outline-none focus:border-indigo-500"
+                      />
+                      <button
+                        onClick={() => updateSingleParam(item.key, params[item.key] + item.step)}
+                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {configCategory === 'premi' && [
+                  { key: 'puntiVittoriaEgoista', label: t.puntiEgoistaLabel, step: 1, min: 0 },
+                  { key: 'moneteVittoriaEgoista', label: t.moneteEgoistaLabel, step: 5, min: 0 },
+                  { key: 'puntiVittoriaSolidale', label: t.puntiSolidaleLabel, step: 1, min: 0 },
+                  { key: 'moneteVittoriaSolidale', label: t.moneteSolidaleLabel, step: 5, min: 0 }
+                ].map(item => (
+                  <div key={item.key} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                    <label className="font-semibold text-slate-300 block mb-2">{item.label}</label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateSingleParam(item.key, Math.max(item.min, params[item.key] - item.step))}
+                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
+                      >
+                        -
+                      </button>
+                      <input 
+                        type="number" 
+                        value={params[item.key]} 
+                        onChange={e => updateSingleParam(item.key, e.target.value)}
+                        className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-center text-white font-extrabold text-sm focus:outline-none focus:border-indigo-500"
+                      />
+                      <button
+                        onClick={() => updateSingleParam(item.key, params[item.key] + item.step)}
+                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-4 border-t border-slate-800 flex justify-between items-center">
+              <span className="text-xs text-slate-500 font-medium">Clicca per applicare le modifiche alla simulazione corrente</span>
+              <button 
+                onClick={initializeTeams} 
+                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition active:scale-95 cursor-pointer"
+              >
                 <RotateCcw className="w-4 h-4" /> {t.applicaResetta}
               </button>
             </div>
