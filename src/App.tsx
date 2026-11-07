@@ -28,16 +28,28 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-const TAPPE_DISPONIBILI = [
-  { id: 1, name: 'Educazione e Formazione', nameZh: '教育与培训', icon: '🎓', desc: { it: 'Test d\'ingresso. Tentazione: sbirciare la prova.', zh: '入学测试。诱惑：偷看试卷。' } },
-  { id: 2, name: 'Matrimonio e Relazioni (Fede)', nameZh: '婚姻与关系（信仰）', icon: '💍', desc: { it: 'Incontro spirituale. Scelta Fede e inizio pagamento Decima.', zh: '精神聚会。选择信仰并开始支付什一税。' } },
-  { id: 3, name: 'Finanza e Crisi Intermedia', nameZh: '金融与中期危机', icon: '⚡', desc: { it: 'Imprevisto e Catastrofe (30 monete). Impatto economico per tutti.', zh: '突发经济灾难（30金币）。全员承受经济冲击。' } },
-  { id: 4, name: 'Lavoro e Carriera', nameZh: '工作与职业', icon: '💼', desc: { it: 'Promozione aziendale. Tentazione: boicottare i colleghi.', zh: '公司晋升。诱惑：排挤同事。' } },
-  { id: 5, name: 'Salute e Benessere', nameZh: '健康与福祉', icon: '🏥', desc: { it: 'Lista d\'attesa medica. Tentazione: raccomandazione sconsiderata.', zh: '医疗等待名单。诱惑：无节制走后门。' } },
-  { id: 6, name: 'Amicizie e Community', nameZh: '友谊与社群', icon: '🤝', desc: { it: 'Mutuo soccorso. Donazioni e prestiti inter-squadra.', zh: '互助。队伍间捐赠与借贷。' } },
-  { id: 7, name: 'Famiglia e Crisi Finale', nameZh: '家庭与终极危机', icon: '🏠', desc: { it: 'Imprevisto economico (40 monete). La Chiesa copre i fedeli integrali.', zh: '经济意外（40金币）。教会庇护虔诚信徒。' } },
-  { id: 8, name: 'Eredità e Futuro', nameZh: '传承与未来', icon: '🌟', desc: { it: 'Passaggio generazionale. Lascito e bilancio etico finale.', zh: '代际传承。遗赠与最终伦理结算。' } }
-];
+const TAPPA_FEDE = 2;
+const TAPPA_CRISI_INTERMEDIA = 3;
+const STORAGE_KEY = 'simulatore_squadre_params_v2';
+
+// Tema narrativo di ogni tappa (round). La logica usa il numero di tappa; la "postazione" è solo il tavolo.
+const TEMI = {
+  istruzione: { icon: '🎓', it: 'Educazione e Formazione', zh: '教育与培训', d: { it: "Test d'ingresso. Tentazione: sbirciare la prova.", zh: '入学测试。诱惑：偷看试卷。' } },
+  fede: { icon: '💍', it: 'Matrimonio e Relazioni (Fede)', zh: '婚姻与关系（信仰）', d: { it: 'Scelta della Fede e inizio del pagamento della Decima.', zh: '选择信仰并开始支付什一税。' } },
+  crisi: { icon: '⚡', it: 'Finanza e Crisi Intermedia', zh: '金融与中期危机', d: { it: 'Catastrofe economica: tassa per tutte le squadre.', zh: '经济灾难：全员缴税。' } },
+  lavoro: { icon: '💼', it: 'Lavoro e Carriera', zh: '工作与职业', d: { it: 'Promozione aziendale. Tentazione: boicottare i colleghi.', zh: '公司晋升。诱惑：排挤同事。' } },
+  salute: { icon: '🏥', it: 'Salute e Benessere', zh: '健康与福祉', d: { it: "Lista d'attesa medica. Tentazione: raccomandazione.", zh: '医疗等待名单。诱惑：走后门。' } },
+  amicizie: { icon: '🤝', it: 'Amicizie e Community', zh: '友谊与社群', d: { it: 'Mutuo soccorso tra squadre.', zh: '队伍间互助。' } },
+  eredita: { icon: '🌟', it: 'Eredità e Futuro', zh: '传承与未来', d: { it: 'Passaggio generazionale e lascito.', zh: '代际传承与遗赠。' } },
+  finale: { icon: '🏠', it: 'Famiglia e Crisi Finale', zh: '家庭与终极危机', d: { it: 'Crisi finale: la Chiesa copre i fedeli integrali.', zh: '终极危机：教会庇护虔诚信徒。' } }
+};
+const temaTappa = (round, max) => {
+  if (round === 1) return TEMI.istruzione;
+  if (round === 2) return TEMI.fede;
+  if (round === 3) return TEMI.crisi;
+  if (round === max) return TEMI.finale;
+  return [TEMI.lavoro, TEMI.salute, TEMI.amicizie, TEMI.eredita][round - 4];
+};
 
 const NOMI_FISSI_PER_ETICA_E_SKILL = {
   VIRTUOSA: {
@@ -112,10 +124,12 @@ const DIZIONARIO = {
     costoCrisiLabel: "Costo Crisi Finale",
     bonusPuntualitaLabel: "Bonus Puntualità",
     moneteVenditaSuccessoLabel: "Monete da Vendita Successo",
-    puntiEgoistaLabel: "Punti Successo (Vittoria Egoista)",
-    moneteEgoistaLabel: "Monete (Vittoria Egoista)",
-    puntiSolidaleLabel: "Punti Successo (Vittoria Solidale)",
-    moneteSolidaleLabel: "Monete (Vittoria Solidale)",
+    puntiEgoistaLabel: "Punti Successo",
+    moneteEgoistaLabel: "Monete Guadagnate",
+    misericordiaEgoistaLabel: "Misericordia",
+    puntiSolidaleLabel: "Punti Successo",
+    moneteSolidaleLabel: "Monete Guadagnate",
+    misericordiaSolidaleLabel: "Misericordia",
     applicaResetta: "Applica e Salva Impostazioni",
     ripristinaDefault: "Ripristina Default",
     teamPrefix: "Squadra",
@@ -127,22 +141,28 @@ const DIZIONARIO = {
       inRitardo: "⏰ In ritardo (0 monete)",
       costoIngresso: (c) => `Costo ingresso (-${c} monete)`,
       vendutoSuccesso: (m) => `Venduto 1 Successo (-1 succ, +${m} monete)`,
-      prestitoAccettato: (m, opp) => `🤝 ${opp} ha ACCETTATO il prestito (+${m} monete, opp +1 misericordia)`,
-      prestitoRifiutato: (m, opp) => `❌ ${opp} ha RIFIUTATO il prestito (opp -1 misericordia). Soccorso Chiesa (+${m} monete)`,
       sceltoFede: "Ha scelto la Fede",
       rifiutatoFede: "Ha rifiutato la Fede",
       versataDecima: (d) => `Versata Decima (-${d} monete)`,
       decimaNonVersata: "Decima non versata",
       tentazioneAcquistata: (c, m) => `Tentazione acquistata (-${c} monete, -${m} misericordia)`,
       sconfittoMinigioco: "Sconfitto nel minigioco (0 guadagni)",
-      vittoriaSolidale: (p, m) => `Vittoria Solidale (+${p} successo, +${m} monete, +1 misericordia)`,
-      ricevutaSolidarieta: (m) => `Ricevuta solidarietà (+${m} monete)`,
-      vittoriaEgoista: (p, m) => `Vittoria Egoista (+${p} successo, +${m} monete)`,
       crisi3Pagata: (c) => `⚡ CATASTROFE (Tappa 3): Pagata tassa (-${c} monete)`,
       crisi3Bancarotta: "⚡ CATASTROFE (Tappa 3): Bancarotta (0 monete)",
       crisiProtetto: "🔥 CRISI FINALE: Protetto dalla Chiesa (0 costo)",
       crisiPagata: (c) => `🔥 CRISI FINALE: Pagata tassa (-${c} monete)`,
-      crisiBancarotta: "🔥 CRISI FINALE: Bancarotta (0 monete)"
+      crisiBancarotta: "🔥 CRISI FINALE: Bancarotta (0 monete)",
+      aiutoRicevuto: (m, opp) => `🤝 ${opp} ha accettato di aiutare (+${m} monete)`,
+      aiutoDato: (m, nome, mis) => `🤝 Ha donato ${m} monete a ${nome} (+${mis} misericordia)`,
+      aiutoRifiutato: (opp) => `❌ ${opp} ha rifiutato di aiutare`,
+      aiutoNegato: (nome, pen) => `❌ Ha rifiutato di aiutare ${nome} (-${pen} misericordia)`,
+      senzaFondi: (opp) => `${opp} non ha fondi per aiutare`,
+      soccorsoChiesa: (m) => `⛪ Soccorso della Chiesa (+${m} monete)`,
+      ingressoNonPagabile: "Ingresso non pagabile: monete azzerate",
+      vantaggio: (p) => `⚡ Vantaggio attivo! Probabilità di vittoria: ${p}%`,
+      solidaleVinta: (p, m, mis, nome) => `🤝 Vittoria Solidale: +${p} successo, +${m} monete a sé e a ${nome} (+${mis} misericordia)`,
+      solidaleRicevuta: (nome, m) => `🎁 ${nome} ha condiviso la vittoria: +${m} monete`,
+      egoistaVinta: (p, m, mis) => `🏆 Vittoria Egoista (+${p} successo, +${m} monete${mis ? `, ${mis > 0 ? '+' : ''}${mis} misericordia` : ''})`
     }
   },
   zh: {
@@ -196,10 +216,12 @@ const DIZIONARIO = {
     costoCrisiLabel: "终极危机成本",
     bonusPuntualitaLabel: "准时奖励",
     moneteVenditaSuccessoLabel: "出售成功点数所得金币",
-    puntiEgoistaLabel: "成功点数（利己胜利）",
-    moneteEgoistaLabel: "金币（利己胜利）",
-    puntiSolidaleLabel: "成功点数（互助胜利）",
-    moneteSolidaleLabel: "金币（互助胜利）",
+    puntiEgoistaLabel: "成功点数",
+    moneteEgoistaLabel: "金币",
+    misericordiaEgoistaLabel: "仁慈",
+    puntiSolidaleLabel: "成功点数",
+    moneteSolidaleLabel: "金币",
+    misericordiaSolidaleLabel: "仁慈",
     applicaResetta: "应用并保存配置",
     ripristinaDefault: "恢复默认设置",
     teamPrefix: "队伍",
@@ -211,45 +233,92 @@ const DIZIONARIO = {
       inRitardo: "⏰ 迟到 (0 金币)",
       costoIngresso: (c) => `准入成本 (-${c} 金币)`,
       vendutoSuccesso: (m) => `出售 1 成功 (-1 成功, +${m} 金币)`,
-      prestitoAccettato: (m, opp) => `🤝 ${opp} 接受借贷援助 (+${m} 金币, 对方 +1 仁慈)`,
-      prestitoRifiutato: (m, opp) => `❌ ${opp} 拒绝借贷 (对方 -1 仁慈)。教会救助 (+${m} 金币)`,
       sceltoFede: "选择了信仰",
       rifiutatoFede: "拒绝了信仰",
       versataDecima: (d) => `缴纳什一税 (-${d} 金币)`,
       decimaNonVersata: "未缴纳什一税",
       tentazioneAcquistata: (c, m) => `购买诱惑 (-${c} 金币, -${m} 仁慈)`,
       sconfittoMinigioco: "小游戏败北 (0 收益)",
-      vittoriaSolidale: (p, m) => `互助胜利 (+${p} 成功, +${m} 金币, +1 仁慈)`,
-      ricevutaSolidarieta: (m) => `获得互助援助 (+${m} 金币)`,
-      vittoriaEgoista: (p, m) => `利己胜利 (+${p} 成功, +${m} 金币)`,
       crisi3Pagata: (c) => `⚡ 中期灾难 (第3阶段)：缴纳税款 (-${c} 金币)`,
       crisi3Bancarotta: "⚡ 中期灾难 (第3阶段)：破产 (0 金币)",
       crisiProtetto: "🔥 终极危机：获教会庇护 (0 成本)",
       crisiPagata: (c) => `🔥 终极危机：缴纳税款 (-${c} 金币)`,
-      crisiBancarotta: "🔥 终极危机：破产 (0 金币)"
+      crisiBancarotta: "🔥 终极危机：破产 (0 金币)",
+      aiutoRicevuto: (m, opp) => `🤝 ${opp} 同意帮助 (+${m} 金币)`,
+      aiutoDato: (m, nome, mis) => `🤝 向 ${nome} 捐助 ${m} 金币 (+${mis} 仁慈)`,
+      aiutoRifiutato: (opp) => `❌ ${opp} 拒绝帮助`,
+      aiutoNegato: (nome, pen) => `❌ 拒绝帮助 ${nome} (-${pen} 仁慈)`,
+      senzaFondi: (opp) => `${opp} 资金不足，无法帮助`,
+      soccorsoChiesa: (m) => `⛪ 教会救助 (+${m} 金币)`,
+      ingressoNonPagabile: "无法支付准入费：金币清零",
+      vantaggio: (p) => `⚡ 优势生效！获胜概率：${p}%`,
+      solidaleVinta: (p, m, mis, nome) => `🤝 互助胜利：+${p} 成功，自己与 ${nome} 各 +${m} 金币 (+${mis} 仁慈)`,
+      solidaleRicevuta: (nome, m) => `🎁 ${nome} 分享了胜利：+${m} 金币`,
+      egoistaVinta: (p, m, mis) => `🏆 利己胜利 (+${p} 成功, +${m} 金币${mis ? `, ${mis > 0 ? '+' : ''}${mis} 仁慈` : ''})`
     }
   }
+};
+
+const PROFILI_DEFAULT = {
+  VIRTUOSA: { probFedePerc: 100, fedeSensClima: 0, fedeSicuraSeClimaOltre: 101, tentBasePerc: 0, tentSensClima: 0, tentSempreSeClimaSotto: -60, tentSeMoneteSotto: 0, tentReagisce: 0, solSenzaTentPerc: 100, solSensClima: 0, solConTentPerc: 15, solConTentClimaMin: 40, solConTentMoneteMin: 0, aiutoPerc: 100, aiutoSeMoneteOltre: 0, aiutoSeClimaOltre: -101, decimaSaltaSeMoneteSotto: 0, vendeSuccessoPerDecima: 1 },
+  OPPORTUNISTA: { probFedePerc: 50, fedeSensClima: 50, fedeSicuraSeClimaOltre: 101, tentBasePerc: 20, tentSensClima: 100, tentSempreSeClimaSotto: -101, tentSeMoneteSotto: 15, tentReagisce: 1, solSenzaTentPerc: 80, solSensClima: 20, solConTentPerc: 100, solConTentClimaMin: -101, solConTentMoneteMin: 20, aiutoPerc: 100, aiutoSeMoneteOltre: 20, aiutoSeClimaOltre: 20, decimaSaltaSeMoneteSotto: 15, vendeSuccessoPerDecima: 0 },
+  EGOISTA: { probFedePerc: 0, fedeSensClima: 0, fedeSicuraSeClimaOltre: 80, tentBasePerc: 100, tentSensClima: 0, tentSempreSeClimaSotto: -101, tentSeMoneteSotto: 0, tentReagisce: 0, solSenzaTentPerc: 0, solSensClima: 0, solConTentPerc: 0, solConTentClimaMin: -101, solConTentMoneteMin: 0, aiutoPerc: 0, aiutoSeMoneteOltre: 0, aiutoSeClimaOltre: 101, decimaSaltaSeMoneteSotto: 0, vendeSuccessoPerDecima: 0 }
 };
 
 const DEFAULT_PARAMS = {
   numSquadre: 14,
   moneteBase: 0,
   bonusPuntualita: 4,
-  probabilitaPuntualitaPerc: 70, 
+  probabilitaPuntualitaPerc: 70,
   costoIngressoTappa: 10,
   costoTentazione: 5,
+  costoMisericordiaTentazione: 2,
   costoCrisiTappa3: 30,
-  costoCrisiTappa7: 50,
+  costoCrisiFinale: 50,
   valoreDecimaFissa: 5,
   moneteDaVenditaSuccesso: 40,
   puntiVittoriaEgoista: 2,
   moneteVittoriaEgoista: 30,
+  misericordiaVittoriaEgoista: 0,
   puntiVittoriaSolidale: 1,
   moneteVittoriaSolidale: 15,
+  misericordiaVittoriaSolidale: 1,
+  climaMinSolidale: -80,
+  probVantaggioPerc: 80,
+  winAltaMedia: 60,
+  winMediaBassa: 60,
+  winAltaBassa: 70,
+  chiesaSoccorre: 1,
+  misAiutoIngresso: 1,
+  misAiutoCrisi: 2,
+  penalitaRifiuto: 1,
   eticitaGlobalePerc: 0,
-  bonusVantaggio: 2.0,
-  costoMisericordiaTentazione: 2
+  profili: PROFILI_DEFAULT
 };
+
+const caricaParams = () => {
+  const m = JSON.parse(JSON.stringify(DEFAULT_PARAMS));
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('simulatore_squadre_params');
+    if (!raw) return m;
+    const o = JSON.parse(raw);
+    Object.keys(DEFAULT_PARAMS).forEach(k => { if (k !== 'profili' && typeof o[k] === 'number') m[k] = o[k]; });
+    if (typeof o.costoCrisiTappa7 === 'number' && typeof o.costoCrisiFinale !== 'number') m.costoCrisiFinale = o.costoCrisiTappa7;
+    if (typeof o.opportunistaSogliaMonete === 'number') m.profili.OPPORTUNISTA.tentSeMoneteSotto = o.opportunistaSogliaMonete;
+    if (typeof o.opportunistaReagisciAvversario === 'number') m.profili.OPPORTUNISTA.tentReagisce = o.opportunistaReagisciAvversario;
+    if (typeof o.opportunistaProbabilitaRandomPerc === 'number') m.profili.OPPORTUNISTA.tentBasePerc = o.opportunistaProbabilitaRandomPerc;
+    PROFILI_ETICI.forEach(e => Object.keys(m.profili[e]).forEach(k => { const v = o.profili?.[e]?.[k]; if (typeof v === 'number') m.profili[e][k] = v; }));
+  } catch (e) { console.error('Impossibile caricare i parametri', e); }
+  return m;
+};
+
+const getVal = (p, path) => {
+  if (!path.includes('.')) return p[path];
+  const [e, k] = path.split('.');
+  return p.profili[e][k];
+};
+// firma dei parametri escluso il clima (che è pensato per essere modificato in tempo reale)
+const firma = (p) => JSON.stringify({ ...p, eticitaGlobalePerc: 0 });
 
 const generateDefaultArchetipi = (count, lang) => {
   return Array.from({ length: count }, (_, i) => {
@@ -267,45 +336,153 @@ const generateDefaultArchetipi = (count, lang) => {
   });
 };
 
+const f = (k, it, zh, h, min, max, step, u = '') => ({ k, it, zh, h, min, max, step, u });
+const bl = (k, it, zh, h) => ({ k, it, zh, h, bool: true, min: 0, max: 1, step: 1 });
+
+const CONFIG_SEZIONI = [
+  { id: 'partita', it: 'Partita', zh: '对局', icon: Users, campi: [
+    f('moneteBase', 'Monete iniziali (base)', '初始基础金币', 'Si somma a un extra casuale di 10, 20 o 30 monete per squadra.', 0, 200, 5, '💰'),
+    f('probabilitaPuntualitaPerc', 'Probabilità di essere puntuali', '准时概率', 'Ogni squadra, a ogni tappa, può arrivare in orario e prendere il bonus.', 0, 100, 5, '%'),
+    f('bonusPuntualita', 'Bonus puntualità', '准时奖励', 'Monete guadagnate arrivando in orario.', 0, 50, 1, '💰')
+  ] },
+  { id: 'economia', it: 'Economia', zh: '经济', icon: Scale, campi: [
+    f('costoIngressoTappa', 'Costo di ingresso a ogni tappa', '阶段准入成本', 'Pagato da entrambe le squadre prima dello scontro.', 0, 100, 1, '💰'),
+    f('valoreDecimaFissa', 'Decima (importo fisso)', '什一税金额', 'Pagata a ogni tappa da chi ha scelto la Fede.', 0, 50, 1, '💰'),
+    f('moneteDaVenditaSuccesso', 'Monete ottenute vendendo 1 punto Successo', '出售成功点数所得金币', 'Usato quando una squadra non riesce a pagare un costo.', 0, 200, 5, '💰'),
+    f('costoCrisiTappa3', 'Catastrofe di metà gioco (tappa 3)', '中期灾难成本', 'Tassa per tutte le squadre alla tappa 3.', 0, 200, 5, '💰'),
+    f('costoCrisiFinale', 'Crisi finale (ultima tappa)', '终极危机成本', 'Non la paga chi ha scelto la Fede e ha versato tutte le decime.', 0, 200, 5, '💰')
+  ] },
+  { id: 'scontri', it: 'Scontri e vittorie', zh: '对抗与胜利', icon: Swords, campi: [
+    f('winAltaMedia', 'Abilità ALTA contro MEDIA', '高对中', 'Probabilità che la squadra più forte vinca.', 0, 100, 5, '%'),
+    f('winMediaBassa', 'Abilità MEDIA contro BASSA', '中对低', 'Probabilità che la squadra più forte vinca.', 0, 100, 5, '%'),
+    f('winAltaBassa', 'Abilità ALTA contro BASSA', '高对低', 'Probabilità che la squadra più forte vinca.', 0, 100, 5, '%'),
+    f('probVantaggioPerc', 'Vittoria con Vantaggio (se lo compra solo una)', '独占优势获胜概率', 'Se entrambe lo comprano, conta solo l\'abilità.', 0, 100, 5, '%'),
+    f('costoTentazione', 'Costo del Vantaggio (Tentazione)', '诱惑成本', 'Monete spese per comprare il Vantaggio.', 0, 50, 1, '💰'),
+    f('costoMisericordiaTentazione', 'Misericordia persa con la Tentazione', '诱惑扣除仁慈', '', 0, 20, 1),
+    f('puntiVittoriaEgoista', 'Vittoria egoista: punti Successo', '利己胜利：成功点数', '', 0, 20, 1),
+    f('moneteVittoriaEgoista', 'Vittoria egoista: monete al vincitore', '利己胜利：金币', '', 0, 200, 5, '💰'),
+    f('misericordiaVittoriaEgoista', 'Vittoria egoista: Misericordia', '利己胜利：仁慈', 'Può essere negativa.', -20, 20, 1),
+    f('puntiVittoriaSolidale', 'Vittoria solidale: punti Successo', '互助胜利：成功点数', '', 0, 20, 1),
+    f('moneteVittoriaSolidale', 'Vittoria solidale: monete a testa', '互助胜利：金币', 'Le riceve sia il vincitore sia lo sconfitto.', 0, 200, 5, '💰'),
+    f('misericordiaVittoriaSolidale', 'Vittoria solidale: Misericordia', '互助胜利：仁慈', '', -20, 20, 1),
+    f('climaMinSolidale', 'Clima minimo per la vittoria solidale', '互助所需最低气候', 'Sotto questo clima nessuno sceglie la solidarietà.', -100, 100, 5, '%')
+  ] },
+  { id: 'aiuti', it: 'Aiuti e Chiesa', zh: '援助与教会', icon: Heart, campi: [
+    bl('chiesaSoccorre', 'La Chiesa copre chi non può pagare', '教会救助无力支付者', 'Se attiva, quando l\'avversario non aiuta (o non può) la Chiesa versa l\'importo mancante. Se spenta, la squadra paga solo quello che ha.'),
+    f('misAiutoIngresso', 'Misericordia a chi aiuta (ingresso)', '帮助者所得仁慈（准入）', 'Gli aiuti sono donazioni: non vanno restituiti.', 0, 10, 1),
+    f('misAiutoCrisi', 'Misericordia a chi aiuta (catastrofe)', '帮助者所得仁慈（灾难）', '', 0, 10, 1),
+    f('penalitaRifiuto', 'Misericordia persa se rifiuta di aiutare', '拒绝帮助扣除仁慈', 'Vale solo se poteva permetterselo.', 0, 10, 1)
+  ] },
+  { id: 'personaggi', it: 'Personaggi', zh: '角色', icon: Compass, campi: [] }
+];
+
+const GRUPPI_PERSONAGGIO = [
+  { id: 'fede', it: 'Fede e Decima', zh: '信仰与什一税', campi: [
+    f('probFedePerc', 'Probabilità di scegliere la Fede', '选择信仰概率', 'Valore di partenza, a clima neutro.', 0, 100, 5, '%'),
+    f('fedeSensClima', 'Effetto del clima sulla Fede', '气候对信仰的影响', 'Punti % aggiunti con clima +100% (negativi se il clima è egoista).', -100, 100, 5, '%'),
+    f('fedeSicuraSeClimaOltre', 'Sceglie sempre la Fede se il clima è almeno', '气候不低于此值则必选信仰', '101 = mai.', -100, 101, 1, '%'),
+    f('decimaSaltaSeMoneteSotto', 'Salta la Decima se ha meno di', '金币低于此值则不缴什一税', '0 = la paga sempre che possa.', 0, 100, 1, '💰'),
+    bl('vendeSuccessoPerDecima', 'Vende Successo pur di pagare la Decima', '为缴什一税出售成功点数', 'Altrimenti rinuncia alla Decima.')
+  ] },
+  { id: 'tentazione', it: 'Tentazione (Vantaggio)', zh: '诱惑（优势）', campi: [
+    f('tentBasePerc', 'Probabilità di cedere', '屈服概率', 'Valore di partenza, a clima neutro.', 0, 100, 5, '%'),
+    f('tentSensClima', 'Quanto il clima virtuoso la riduce', '美德气候降低程度', '100 = a clima +100% non cede mai (a -100% raddoppia).', -100, 100, 5, '%'),
+    f('tentSempreSeClimaSotto', 'Cede sempre se il clima è sotto', '气候低于此值必屈服', '-101 = mai.', -101, 100, 1, '%'),
+    f('tentSeMoneteSotto', 'Cede sempre se ha meno di', '金币低于此值必屈服', '0 = disattivato.', 0, 100, 1, '💰'),
+    bl('tentReagisce', 'Cede se l\'avversario lo ha fatto', '对手屈服则跟进', 'Reagisce alla scelta dell\'avversario nello stesso scontro.')
+  ] },
+  { id: 'vittoria', it: 'Quando vince', zh: '获胜时', campi: [
+    f('solSenzaTentPerc', 'Probabilità di vittoria solidale', '互助胜利概率', 'Se ha vinto senza comprare il Vantaggio.', 0, 100, 5, '%'),
+    f('solSensClima', 'Effetto del clima sulla solidarietà', '气候对互助的影响', 'Punti % aggiunti con clima +100%.', -100, 100, 5, '%'),
+    f('solConTentPerc', 'Probabilità di solidarietà dopo aver comprato il Vantaggio', '购买优势后互助概率', '', 0, 100, 5, '%'),
+    f('solConTentClimaMin', '…solo se il clima supera', '…仅当气候高于', '-101 = sempre.', -101, 100, 1, '%'),
+    f('solConTentMoneteMin', '…solo se ha almeno', '…仅当金币不少于', '0 = sempre.', 0, 200, 1, '💰')
+  ] },
+  { id: 'aiuto', it: 'Aiuto agli altri', zh: '帮助他人', campi: [
+    f('aiutoPerc', 'Probabilità di aiutare chi è in difficoltà', '帮助困难者概率', 'Se le condizioni qui sotto sono soddisfatte.', 0, 100, 5, '%'),
+    f('aiutoSeMoneteOltre', 'Aiuta se ha più di', '金币多于此值则帮助', 'Basta una delle due condizioni.', 0, 200, 1, '💰'),
+    f('aiutoSeClimaOltre', 'oppure se il clima supera', '或气候高于', '101 = mai, -101 = sempre.', -101, 101, 1, '%')
+  ] }
+];
+
+const PROFILI_INFO = {
+  VIRTUOSA: { it: 'Virtuosi', zh: '美德队', d: { it: 'Cercano solidarietà: aiutano, dividono le vittorie e resistono alle tentazioni.', zh: '寻求团结：帮助他人、分享胜利、抵制诱惑。' }, stile: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' },
+  OPPORTUNISTA: { it: 'Opportunisti', zh: '机会主义队', d: { it: 'Si adattano: cedono alle tentazioni se sono in difficoltà o se lo fa l\'avversario.', zh: '随机应变：处境困难或对手屈服时会屈服。' }, stile: 'bg-amber-500/20 text-amber-300 border-amber-500/50' },
+  EGOISTA: { it: 'Egoisti', zh: '利己队', d: { it: 'Puntano al proprio vantaggio: tentazione sempre, mai solidali, non aiutano.', zh: '只顾自身利益：总是屈服、从不互助、不帮助他人。' }, stile: 'bg-rose-500/20 text-rose-300 border-rose-500/50' }
+};
+
+function ConfigField({ def, value, defaultValue, onChange, lang }) {
+  const modificato = value !== defaultValue;
+  const [bozza, setBozza] = useState(String(value));
+  useEffect(() => { setBozza(String(value)); }, [value]);
+  const limita = (n) => Math.min(def.max, Math.max(def.min, n));
+  const conferma = (v) => {
+    const n = Number(v);
+    if (v.trim() === '' || Number.isNaN(n)) { setBozza(String(value)); return; }
+    onChange(limita(n));
+  };
+  const btn = 'w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 flex items-center justify-center cursor-pointer transition active:scale-95';
+  return (
+    <div className={`rounded-2xl border p-4 space-y-2.5 ${modificato ? 'bg-indigo-950/20 border-indigo-500/40' : 'bg-slate-950/60 border-slate-800'}`}>
+      <div className="flex justify-between items-start gap-2">
+        <span className="text-xs font-semibold text-slate-200 leading-snug">{lang === 'zh' ? def.zh : def.it}</span>
+        {modificato && (
+          <button onClick={() => onChange(defaultValue)} title={lang === 'zh' ? '恢复默认' : `Ripristina (${defaultValue})`} className="text-[10px] font-bold text-indigo-300 hover:text-white shrink-0 cursor-pointer">
+            ↺ {defaultValue}
+          </button>
+        )}
+      </div>
+      {def.h && lang !== 'zh' && <p className="text-[11px] text-slate-400 leading-snug">{def.h}</p>}
+      {def.bool ? (
+        <button onClick={() => onChange(value === 1 ? 0 : 1)} className={`w-full py-2 rounded-xl text-xs font-extrabold border cursor-pointer transition ${value === 1 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+          {value === 1 ? (lang === 'zh' ? '开启' : 'Attivo') : (lang === 'zh' ? '关闭' : 'Disattivo')}
+        </button>
+      ) : (
+        <>
+          <div className="flex items-center gap-2">
+            <button aria-label="-" onClick={() => onChange(limita(value - def.step))} className={btn}>−</button>
+            <div className="relative flex-1">
+              <input type="text" inputMode="numeric" value={bozza} onChange={e => setBozza(e.target.value)} onBlur={e => conferma(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') conferma(bozza); }}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-center text-white font-extrabold text-sm focus:outline-none focus:border-indigo-500" />
+              {def.u && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-500 pointer-events-none">{def.u}</span>}
+            </div>
+            <button aria-label="+" onClick={() => onChange(limita(value + def.step))} className={btn}>+</button>
+          </div>
+          {def.u === '%' && <input type="range" min={def.min} max={def.max} step={def.step} value={value} onChange={e => onChange(Number(e.target.value))} className="w-full accent-indigo-500 cursor-pointer" />}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [lang, setLang] = useState('it');
   const t = DIZIONARIO[lang];
 
-  const [params, setParams] = useState(() => {
-    try {
-      const saved = localStorage.getItem('simulatore_squadre_params');
-      if (saved) {
-        return { ...DEFAULT_PARAMS, ...JSON.parse(saved) };
-      }
-    } catch (e) {
-      console.error("Impossibile caricare parametri da localStorage", e);
-    }
-    return DEFAULT_PARAMS;
+  const [params, setParams] = useState(caricaParams);
+  const [configCategory, setConfigCategory] = useState('partita');
+  const [profiloAttivo, setProfiloAttivo] = useState('VIRTUOSA');
+  const [confermaReset, setConfermaReset] = useState(false);
+  const [paramsAvvio, setParamsAvvio] = useState('');
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(params)); } catch (e) { console.error('Impossibile salvare i parametri', e); }
+  }, [params]);
+
+  const setParam = (path, raw) => setParams(prev => {
+    const v = Number(raw);
+    if (Number.isNaN(v)) return prev;
+    if (!path.includes('.')) return { ...prev, [path]: v };
+    const [e, k] = path.split('.');
+    return { ...prev, profili: { ...prev.profili, [e]: { ...prev.profili[e], [k]: v } } };
   });
-
-  const [configCategory, setConfigCategory] = useState('struttura');
-
-  const saveParamsToLocalStorage = useCallback((newParams) => {
-    try {
-      localStorage.setItem('simulatore_squadre_params', JSON.stringify(newParams));
-    } catch (e) {
-      console.error("Impossibile salvare in localStorage", e);
-    }
-  }, []);
-
-  const updateSingleParam = (key, val) => {
-    setParams(prev => {
-      const next = { ...prev, [key]: Number(val) };
-      saveParamsToLocalStorage(next);
-      return next;
-    });
-  };
-
+  const ripristina = (paths) => paths.forEach(p => setParam(p, getVal(DEFAULT_PARAMS, p)));
   const handleResetToDefault = () => {
-    setParams(DEFAULT_PARAMS);
-    saveParamsToLocalStorage(DEFAULT_PARAMS);
+    setParams(JSON.parse(JSON.stringify(DEFAULT_PARAMS)));
     setArchetipiConfig(generateDefaultArchetipi(DEFAULT_PARAMS.numSquadre, lang));
+    setConfermaReset(false);
   };
+  const configCambiata = paramsAvvio !== '' && paramsAvvio !== firma(params);
 
   const maxTappe = useMemo(() => {
     if (params.numSquadre === 12) return 6;
@@ -323,15 +500,9 @@ export default function App() {
 
   const handleSelectNumSquadre = (count) => {
     if (![12, 14, 16].includes(count)) return;
-    const nextParams = { ...params, numSquadre: count };
-    setParams(nextParams);
-    saveParamsToLocalStorage(nextParams);
+    setParams(p => ({ ...p, numSquadre: count }));
     setArchetipiConfig(generateDefaultArchetipi(count, lang));
   };
-
-  const eticitaValoreNumerico = useMemo(() => {
-    return Math.round((params.eticitaGlobalePerc / 100) * 50);
-  }, [params.eticitaGlobalePerc]);
 
   const getDistribuzioneEsatta = useCallback((globalPerc, totalTeams) => {
     const pool = totalTeams;
@@ -434,11 +605,9 @@ export default function App() {
       const matchesWithTappe = [];
 
       baseRounds[r].forEach((match, matchIdx) => {
-        let tappaId = ((matchIdx + r) % numMatchesPerRound) + 1;
-        
+        const postazione = ((matchIdx + r) % numMatchesPerRound) + 1;
         matchesWithTappe.push({
-          tappaId,
-          tappaNome: TAPPE_DISPONIBILI[tappaId - 1] ? TAPPE_DISPONIBILI[tappaId - 1].name : `Tappa ${tappaId}`,
+          postazione,
           teamAId: match.teamAId,
           teamBId: match.teamBId
         });
@@ -475,11 +644,12 @@ export default function App() {
     });
 
     setSquadre(newSquadre);
+    setParamsAvvio(firma(params));
     setCurrentTappa(0);
     setViewedTappa(0);
     setHistory([{ tappa: 0, squadre: newSquadre.map(s => ({ ...s })) }]);
     setEventLogs([{ tappa: 0, testo: `Simulazione inizializzata!` }]);
-  }, [params.numSquadre, params.moneteBase, params.eticitaGlobalePerc, lang, getDatiDinamiciSquadra, t.teamPrefix]);
+  }, [params, lang, getDatiDinamiciSquadra, t.teamPrefix]);
 
   useEffect(() => {
     initializeTeams();
@@ -500,320 +670,163 @@ export default function App() {
     });
   }, [params.eticitaGlobalePerc, params.numSquadre, getDatiDinamiciSquadra, lang, t]);
 
-  const calculateWinProbability = (teamA, teamB, cedeA, cedeB) => {
-    if (cedeA && !cedeB) return 0.80;
-    if (!cedeA && cedeB) return 0.20;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const rnd = (perc) => Math.random() * 100 < perc;
+  const profiloDi = (etica) => params.profili[etica];
 
-    const skillA = teamA.skill;
-    const skillB = teamB.skill;
-
-    if (skillA === skillB) return 0.50;
-
-    if (skillA === 'ALTA' && skillB === 'MEDIA') return 0.60;
-    if (skillA === 'MEDIA' && skillB === 'ALTA') return 0.40;
-
-    if (skillA === 'MEDIA' && skillB === 'BASSA') return 0.60;
-    if (skillA === 'BASSA' && skillB === 'MEDIA') return 0.40;
-
-    if (skillA === 'ALTA' && skillB === 'BASSA') return 0.70;
-    if (skillA === 'BASSA' && skillB === 'ALTA') return 0.30;
-
-    return 0.50;
+  const probVittoria = (a, b, cedeA, cedeB) => {
+    if (cedeA && !cedeB) return params.probVantaggioPerc / 100;
+    if (!cedeA && cedeB) return 1 - params.probVantaggioPerc / 100;
+    if (a.skill === b.skill) return 0.5;
+    const forza = { ALTA: 3, MEDIA: 2, BASSA: 1 };
+    const aForte = forza[a.skill] > forza[b.skill];
+    const [forte, debole] = aForte ? [a.skill, b.skill] : [b.skill, a.skill];
+    const p = (forte === 'ALTA' && debole === 'MEDIA' ? params.winAltaMedia : forte === 'MEDIA' ? params.winMediaBassa : params.winAltaBassa) / 100;
+    return aForte ? p : 1 - p;
   };
 
   const simulateSingleTappa = (tappaNumber, currentSquadreMap) => {
-    const currentRoundMatches = scheduleMatchmaking[tappaNumber - 1].matches;
-    const currentLogs = [];
-    currentLogs.push({ tappa: tappaNumber, testo: `Tappa ${tappaNumber}` });
+    const L = DIZIONARIO[lang].logs;
+    const clima = params.eticitaGlobalePerc;
+    const tot = archetipiConfig.length;
+    const currentLogs = [{ tappa: tappaNumber, testo: `Tappa ${tappaNumber}` }];
 
-    const updatedSquadreMap = new Map();
-    currentSquadreMap.forEach((sq, id) => {
-      updatedSquadreMap.set(id, JSON.parse(JSON.stringify(sq)));
-    });
+    const map = new Map();
+    currentSquadreMap.forEach((sq, id) => map.set(id, JSON.parse(JSON.stringify(sq))));
 
-    updatedSquadreMap.forEach((t) => {
-      const probPuntuale = params.probabilitaPuntualitaPerc / 100;
-      const ePuntuale = Math.random() < probPuntuale;
-      t.ePuntualeInQuestaTappa = ePuntuale;
-      if (ePuntuale) {
+    map.forEach((t) => {
+      t.ePuntualeInQuestaTappa = rnd(params.probabilitaPuntualitaPerc);
+      if (t.ePuntualeInQuestaTappa) {
         t.monete += params.bonusPuntualita;
         t.bonusPuntualitaAccumulati = (t.bonusPuntualitaAccumulati || 0) + 1;
       }
     });
 
-    currentRoundMatches.forEach(match => {
-      let teamA = updatedSquadreMap.get(match.teamAId);
-      let teamB = updatedSquadreMap.get(match.teamBId);
-      if (!teamA || !teamB) return;
+    scheduleMatchmaking[tappaNumber - 1].matches.forEach(match => {
+      const tA = map.get(match.teamAId), tB = map.get(match.teamBId);
+      if (!tA || !tB) return;
+      const mk = (t, opp) => ({ t, opp, log: [], cede: false, etica: getEticaEffettivaSquadra(t.id - 1, tot, clima), oppS: null });
+      const A = mk(tA, tB), B = mk(tB, tA);
+      A.oppS = B; B.oppS = A;
+      const entrambi = [A, B];
+      // l'ordine casuale evita che la squadra "A" sia sempre avvantaggiata nelle fasi sequenziali
+      const ordineCasuale = () => (Math.random() < 0.5 ? [A, B] : [B, A]);
+      entrambi.forEach(S => S.log.push(S.t.ePuntualeInQuestaTappa ? L.inOrario(params.bonusPuntualita) : L.inRitardo));
 
-      const eticaEffettivaA = getEticaEffettivaSquadra(match.teamAId - 1, archetipiConfig.length, params.eticitaGlobalePerc);
-      const eticaEffettivaB = getEticaEffettivaSquadra(match.teamBId - 1, archetipiConfig.length, params.eticitaGlobalePerc);
-
-      let logA = [];
-      let logB = [];
-
-      [ { t: teamA, log: logA }, { t: teamB, log: logB } ].forEach(({ t, log }) => {
-        if (t.ePuntualeInQuestaTappa) log.push(DIZIONARIO[lang].logs.inOrario(params.bonusPuntualita));
-        else log.push(DIZIONARIO[lang].logs.inRitardo);
-      });
-
-      [ 
-        { t: teamA, log: logA, opp: teamB, oppEtica: eticaEffettivaB }, 
-        { t: teamB, log: logB, opp: teamA, oppEtica: eticaEffettivaA } 
-      ].forEach(({ t, log, opp, oppEtica }) => {
-        if (t.monete >= params.costoIngressoTappa) {
-          t.monete -= params.costoIngressoTappa;
-          log.push(DIZIONARIO[lang].logs.costoIngresso(params.costoIngressoTappa));
+      // Aiuto dell'avversario (donazione, non va restituita) e, se necessario, soccorso della Chiesa
+      const richiediAiuto = (S, importo, misAcc) => {
+        const { t, opp, oppS } = S;
+        const pf = profiloDi(oppS.etica);
+        if (opp.monete >= importo) {
+          if (rnd(pf.aiutoPerc) && (opp.monete > pf.aiutoSeMoneteOltre || clima > pf.aiutoSeClimaOltre)) {
+            opp.monete -= importo; opp.puntiMisericordia += misAcc; t.monete += importo;
+            S.log.push(L.aiutoRicevuto(importo, opp.nome));
+            oppS.log.push(L.aiutoDato(importo, t.nome, misAcc));
+            return;
+          }
+          opp.puntiMisericordia -= params.penalitaRifiuto;
+          S.log.push(L.aiutoRifiutato(opp.nome));
+          oppS.log.push(L.aiutoNegato(t.nome, params.penalitaRifiuto));
         } else {
-          if (t.puntiSuccesso > 0) {
-            t.puntiSuccesso -= 1;
-            t.monete += params.moneteDaVenditaSuccesso;
-            log.push(DIZIONARIO[lang].logs.vendutoSuccesso(params.moneteDaVenditaSuccesso));
-            // Effettua subito il pagamento dell'ingresso dopo la vendita
-            t.monete -= params.costoIngressoTappa;
-            log.push(DIZIONARIO[lang].logs.costoIngresso(params.costoIngressoTappa));
-          } else {
-            // Calcolo dell'importo strettamente necessario per coprire l'ingresso
-            const mancanteIngresso = params.costoIngressoTappa - t.monete;
-
-            if (opp.monete >= mancanteIngresso) {
-              let accettaAiuto = false;
-              if (oppEtica === 'VIRTUOSA') {
-                accettaAiuto = true;
-              } else if (oppEtica === 'OPPORTUNISTA') {
-                accettaAiuto = opp.monete > 20 || params.eticitaGlobalePerc > 20;
-              } else {
-                accettaAiuto = false;
-              }
-
-              if (accettaAiuto) {
-                opp.monete -= mancanteIngresso;
-                opp.puntiMisericordia += 1;
-                t.monete += mancanteIngresso;
-                log.push(DIZIONARIO[lang].logs.prestitoAccettato(mancanteIngresso, opp.nome));
-              } else {
-                opp.puntiMisericordia -= 1;
-                t.monete += mancanteIngresso;
-                log.push(DIZIONARIO[lang].logs.prestitoRifiutato(mancanteIngresso, opp.nome));
-              }
-            } else {
-              t.monete += mancanteIngresso;
-              log.push(DIZIONARIO[lang].logs.prestitoRifiutato(mancanteIngresso, opp.nome));
-            }
-
-            // Successivamente alla donazione/intervento, paga regolarmente l'ingresso
-            t.monete -= params.costoIngressoTappa;
-            log.push(DIZIONARIO[lang].logs.costoIngresso(params.costoIngressoTappa));
-          }
+          S.log.push(L.senzaFondi(opp.nome));
         }
-      });
+        if (params.chiesaSoccorre === 1) { t.monete += importo; S.log.push(L.soccorsoChiesa(importo)); }
+      };
 
-      if (tappaNumber === 3) {
-        [ 
-          { t: teamA, log: logA, opp: teamB, oppEtica: eticaEffettivaB, oppLog: logB }, 
-          { t: teamB, log: logB, opp: teamA, oppEtica: eticaEffettivaA, oppLog: logA } 
-        ].forEach(({ t, log, opp, oppEtica, oppLog }) => {
-          const costoCatastrofe = params.costoCrisiTappa3;
+      const pagaCosto = (S, costo, misAcc, logOk, logKo) => {
+        const { t } = S;
+        if (t.monete < costo && t.puntiSuccesso > 0) {
+          t.puntiSuccesso -= 1; t.monete += params.moneteDaVenditaSuccesso;
+          S.log.push(L.vendutoSuccesso(params.moneteDaVenditaSuccesso));
+        }
+        if (t.monete < costo) richiediAiuto(S, costo - t.monete, misAcc);
+        if (t.monete >= costo) { t.monete -= costo; S.log.push(logOk); }
+        else { t.monete = 0; S.log.push(logKo); }
+      };
 
-          if (t.monete >= costoCatastrofe) {
-            t.monete -= costoCatastrofe;
-            log.push(DIZIONARIO[lang].logs.crisi3Pagata(costoCatastrofe));
-          } else {
-            let importoMancante = costoCatastrofe - t.monete;
-            if (t.puntiSuccesso > 0) {
-              t.puntiSuccesso -= 1;
-              t.monete += params.moneteDaVenditaSuccesso;
-              log.push(DIZIONARIO[lang].logs.vendutoSuccesso(params.moneteDaVenditaSuccesso));
-            }
+      ordineCasuale().forEach(S => pagaCosto(S, params.costoIngressoTappa, params.misAiutoIngresso, L.costoIngresso(params.costoIngressoTappa), L.ingressoNonPagabile));
+      if (tappaNumber === TAPPA_CRISI_INTERMEDIA) {
+        ordineCasuale().forEach(S => pagaCosto(S, params.costoCrisiTappa3, params.misAiutoCrisi, L.crisi3Pagata(params.costoCrisiTappa3), L.crisi3Bancarotta));
+      }
 
-            importoMancante = costoCatastrofe - t.monete;
-
-            if (importoMancante > 0) {
-              if (opp.monete >= importoMancante) {
-                let accettaAiuto = oppEtica === 'VIRTUOSA' || (oppEtica === 'OPPORTUNISTA' && params.eticitaGlobalePerc > 20);
-                if (accettaAiuto) {
-                  opp.monete -= importoMancante;
-                  opp.puntiMisericordia += 2;
-                  t.monete += importoMancante;
-                  log.push(`🤝 ${opp.nome} ha ACCETTATO il prestito di ${importoMancante} monete.`);
-                  oppLog.push(`🤝 Ha donato/prestato ${importoMancante} monete a ${t.nome} (+2 misericordia).`);
-                } else {
-                  opp.puntiMisericordia -= 1;
-                  t.monete += importoMancante;
-                  log.push(DIZIONARIO[lang].logs.prestitoRifiutato(importoMancante, opp.nome));
-                  oppLog.push(`❌ Ha RIFIUTATO il prestito a ${t.nome} (-1 misericordia). Intervento Chiesa.`);
-                }
-              } else {
-                t.monete += importoMancante;
-                log.push(`⛪ ${opp.nome} non ha abbastanza fondi. Intervento protettivo della Chiesa (+${importoMancante} monete).`);
-              }
-            }
-
-            if (t.monete >= costoCatastrofe) {
-              t.monete -= costoCatastrofe;
-              log.push(DIZIONARIO[lang].logs.crisi3Pagata(costoCatastrofe));
-            } else {
-              t.monete = 0;
-              log.push(DIZIONARIO[lang].logs.crisi3Bancarotta);
-            }
-          }
+      if (tappaNumber === TAPPA_FEDE) {
+        entrambi.forEach(S => {
+          const pf = profiloDi(S.etica);
+          S.t.haSceltoDiCredere = clima >= pf.fedeSicuraSeClimaOltre || rnd(clamp(pf.probFedePerc + pf.fedeSensClima * clima / 100, 0, 100));
+          if (S.t.haSceltoDiCredere) S.log.push(L.sceltoFede);
+          else { S.t.haPagatoTutteLeDecime = false; S.log.push(L.rifiutatoFede); }
         });
       }
 
-      [ 
-        { t: teamA, log: logA, eticaEff: eticaEffettivaA }, 
-        { t: teamB, log: logB, eticaEff: eticaEffettivaB } 
-      ].forEach(({ t, log, eticaEff }) => {
-        if (tappaNumber === 2) {
-          const probFedeMod = 0.5 + (eticitaValoreNumerico / 100);
-          if (eticaEff === 'VIRTUOSA') t.haSceltoDiCredere = true;
-          else if (eticaEff === 'EGOISTA') t.haSceltoDiCredere = eticitaValoreNumerico >= 40;
-          else if (eticaEff === 'OPPORTUNISTA') t.haSceltoDiCredere = Math.random() < probFedeMod;
-          else t.haSceltoDiCredere = Math.random() > (0.6 - (eticitaValoreNumerico / 200));
-
-          if (t.haSceltoDiCredere) log.push(DIZIONARIO[lang].logs.sceltoFede);
-          else {
-            t.haPagatoTutteLeDecime = false;
-            log.push(DIZIONARIO[lang].logs.rifiutatoFede);
-          }
-        }
+      // Tentazione: UNA sola estrazione casuale per squadra; poi l'eventuale reazione all'avversario
+      const vuoleBase = (S) => {
+        const pf = profiloDi(S.etica);
+        if (S.t.monete < params.costoTentazione) return false;
+        if (clima < pf.tentSempreSeClimaSotto || S.t.monete < pf.tentSeMoneteSotto) return true;
+        if (pf.tentBasePerc <= 0) return false;
+        return rnd(clamp(pf.tentBasePerc * (1 - (pf.tentSensClima / 100) * (clima / 100)), 1, 100));
+      };
+      const base = [vuoleBase(A), vuoleBase(B)];
+      entrambi.forEach((S, i) => {
+        S.cede = base[i] || (profiloDi(S.etica).tentReagisce === 1 && base[1 - i] && S.t.monete >= params.costoTentazione);
+        if (!S.cede) return;
+        S.t.monete -= params.costoTentazione;
+        S.t.puntiMisericordia -= params.costoMisericordiaTentazione;
+        S.t.tentazioniCedute += 1;
+        S.log.push(L.tentazioneAcquistata(params.costoTentazione, params.costoMisericordiaTentazione));
       });
 
-      const vuoleTentazione = (t, eticaEff) => {
-        if (t.monete < params.costoTentazione) return false;
+      const pA = probVittoria(tA, tB, A.cede, B.cede);
+      entrambi.forEach((S, i) => { if (S.cede) S.log.push(L.vantaggio(Math.round((i === 0 ? pA : 1 - pA) * 100))); });
 
-        if (eticaEff === 'VIRTUOSA') {
-          return eticitaValoreNumerico < -30;
-        }
-        
-        if (eticaEff === 'EGOISTA') {
-          return true;
-        }
-
-        if (eticaEff === 'OPPORTUNISTA') {
-          if (t.monete <= 15 || t.puntiSuccesso <= 1) {
-            return true;
-          }
-          const probCedereStabile = Math.max(0.05, 1 - (params.eticitaGlobalePerc / 100));
-          return Math.random() < probCedereStabile;
-        }
-
-        return false;
-      };
-
-      const cedeA = vuoleTentazione(teamA, eticaEffettivaA);
-      const cedeB = vuoleTentazione(teamB, eticaEffettivaB);
-
-      const penalitaMisericordia = params.costoMisericordiaTentazione !== undefined ? params.costoMisericordiaTentazione : 2;
-
-      if (cedeA) {
-        teamA.monete -= params.costoTentazione;
-        teamA.puntiMisericordia -= penalitaMisericordia;
-        teamA.tentazioniCedute += 1;
-        logA.push(DIZIONARIO[lang].logs.tentazioneAcquistata(params.costoTentazione, penalitaMisericordia));
-      }
-      if (cedeB) {
-        teamB.monete -= params.costoTentazione;
-        teamB.puntiMisericordia -= penalitaMisericordia;
-        teamB.tentazioniCedute += 1;
-        logB.push(DIZIONARIO[lang].logs.tentazioneAcquistata(params.costoTentazione, penalitaMisericordia));
-      }
-
-      const winProbA = calculateWinProbability(teamA, teamB, cedeA, cedeB);
-      const winProbAPerc = Math.round(winProbA * 100);
-      const winProbBPerc = 100 - winProbAPerc;
-
-      if (cedeA) logA.push(`⚡ Vantaggio attivo! Probabilità scontro: ${winProbAPerc}%`);
-      if (cedeB) logB.push(`⚡ Vantaggio attivo! Probabilità scontro: ${winProbBPerc}%`);
-
-      const winnerIsA = Math.random() < winProbA;
-      const winner = winnerIsA ? teamA : teamB;
-      const winnerEticaEff = winnerIsA ? eticaEffettivaA : eticaEffettivaB;
-      const winnerHaUsatoTentazione = winnerIsA ? cedeA : cedeB;
-      const loser = winnerIsA ? teamB : teamA;
-      const winnerLog = winnerIsA ? logA : logB;
-      const loserLog = winnerIsA ? logB : logA;
-
-      loserLog.push(DIZIONARIO[lang].logs.sconfittoMinigioco);
-
-      let sceglieSolidale = false;
-
-      if (winnerEticaEff === 'VIRTUOSA') {
-        sceglieSolidale = winnerHaUsatoTentazione
-          ? Math.random() < 0.15 && eticitaValoreNumerico > 20
-          : true;
-      } else if (winnerEticaEff === 'OPPORTUNISTA') {
-        if (winnerHaUsatoTentazione) {
-          sceglieSolidale = winner.monete >= 20;
-        } else {
-          const probAltaSolidale = Math.min(0.95, Math.max(0.65, 0.80 + (params.eticitaGlobalePerc / 500)));
-          sceglieSolidale = Math.random() < probAltaSolidale;
-        }
+      const aVince = Math.random() < pA;
+      const W = aVince ? A : B, X = aVince ? B : A;
+      X.log.push(L.sconfittoMinigioco);
+      const pw = profiloDi(W.etica);
+      const probSol = W.cede
+        ? (clima > pw.solConTentClimaMin && W.t.monete >= pw.solConTentMoneteMin ? pw.solConTentPerc : 0)
+        : clamp(pw.solSenzaTentPerc + pw.solSensClima * clima / 100, 0, 100);
+      if (clima > params.climaMinSolidale && rnd(probSol)) {
+        W.t.puntiSuccesso += params.puntiVittoriaSolidale;
+        W.t.monete += params.moneteVittoriaSolidale;
+        X.t.monete += params.moneteVittoriaSolidale;
+        W.t.puntiMisericordia += params.misericordiaVittoriaSolidale;
+        W.t.donazioniEffettuate += 1;
+        W.log.push(L.solidaleVinta(params.puntiVittoriaSolidale, params.moneteVittoriaSolidale, params.misericordiaVittoriaSolidale, X.t.nome));
+        X.log.push(L.solidaleRicevuta(W.t.nome, params.moneteVittoriaSolidale));
       } else {
-        sceglieSolidale = false;
+        W.t.puntiSuccesso += params.puntiVittoriaEgoista;
+        W.t.monete += params.moneteVittoriaEgoista;
+        W.t.puntiMisericordia += params.misericordiaVittoriaEgoista;
+        W.log.push(L.egoistaVinta(params.puntiVittoriaEgoista, params.moneteVittoriaEgoista, params.misericordiaVittoriaEgoista));
       }
 
-      if (sceglieSolidale && eticitaValoreNumerico > -40) {
-        winner.puntiSuccesso += params.puntiVittoriaSolidale;
-        winner.monete += params.moneteVittoriaSolidale;
-        loser.monete += params.moneteVittoriaSolidale;
-        winner.puntiMisericordia += 1;
-        winner.donazioniEffettuate += 1;
-        winnerLog.push(`🤝 Vittoria Solidale con donazione: +${params.puntiVittoriaSolidale} successo, +${params.moneteVittoriaSolidale} monete a se stesso e a ${loser.nome} (+1 misericordia).`);
-        loserLog.push(`🎁 ${winner.nome} ha condiviso la solidarietà, donando ${params.moneteVittoriaSolidale} monete.`);
-      } else {
-        winner.puntiSuccesso += params.puntiVittoriaEgoista;
-        winner.monete += params.moneteVittoriaEgoista;
-        winnerLog.push(DIZIONARIO[lang].logs.vittoriaEgoista(params.puntiVittoriaEgoista, params.moneteVittoriaEgoista));
-      }
-
-      if (tappaNumber >= 2 && tappaNumber < maxTappe) {
-        [ { t: teamA, log: logA, eticaEff: eticaEffettivaA }, { t: teamB, log: logB, eticaEff: eticaEffettivaB } ].forEach(({ t, log, eticaEff }) => {
-          if (t.haSceltoDiCredere) {
-            const decima = params.valoreDecimaFissa;
-            const opportunistaInCrisi = eticaEff === 'OPPORTUNISTA' && t.monete < 15;
-
-            if (!opportunistaInCrisi && t.monete >= decima) {
-              t.monete -= decima;
-              log.push(DIZIONARIO[lang].logs.versataDecima(decima));
-            } else {
-              if (!opportunistaInCrisi && eticaEff === 'VIRTUOSA' && t.puntiSuccesso > 0) {
-                t.puntiSuccesso -= 1;
-                t.monete += params.moneteDaVenditaSuccesso - decima;
-                log.push(DIZIONARIO[lang].logs.vendutoSuccesso(params.moneteDaVenditaSuccesso));
-                log.push(DIZIONARIO[lang].logs.versataDecima(decima));
-              } else {
-                t.haPagatoTutteLeDecime = false;
-                log.push(DIZIONARIO[lang].logs.decimaNonVersata);
-              }
-            }
-          } else {
-            t.haPagatoTutteLeDecime = false;
-          }
+      if (tappaNumber >= TAPPA_FEDE && tappaNumber < maxTappe) {
+        entrambi.forEach(S => {
+          const { t } = S; const pf = profiloDi(S.etica); const d = params.valoreDecimaFissa;
+          if (!t.haSceltoDiCredere) { t.haPagatoTutteLeDecime = false; return; }
+          const salta = t.monete < pf.decimaSaltaSeMoneteSotto;
+          if (!salta && t.monete >= d) { t.monete -= d; S.log.push(L.versataDecima(d)); }
+          else if (!salta && pf.vendeSuccessoPerDecima === 1 && t.puntiSuccesso > 0) {
+            t.puntiSuccesso -= 1; t.monete += params.moneteDaVenditaSuccesso - d;
+            S.log.push(L.vendutoSuccesso(params.moneteDaVenditaSuccesso)); S.log.push(L.versataDecima(d));
+          } else { t.haPagatoTutteLeDecime = false; S.log.push(L.decimaNonVersata); }
         });
       }
 
       if (tappaNumber === maxTappe) {
-        [ { t: teamA, log: logA }, { t: teamB, log: logB } ].forEach(({ t, log }) => {
-          if (t.haSceltoDiCredere && t.haPagatoTutteLeDecime) {
-            log.push(DIZIONARIO[lang].logs.crisiProtetto);
-          } else {
-            if (t.monete >= params.costoCrisiTappa7) {
-              t.monete -= params.costoCrisiTappa7;
-              log.push(DIZIONARIO[lang].logs.crisiPagata(params.costoCrisiTappa7));
-            } else {
-              t.monete = 0;
-              log.push(DIZIONARIO[lang].logs.crisiBancarotta);
-            }
-          }
+        entrambi.forEach(S => {
+          const { t } = S;
+          if (t.haSceltoDiCredere && t.haPagatoTutteLeDecime) S.log.push(L.crisiProtetto);
+          else if (t.monete >= params.costoCrisiFinale) { t.monete -= params.costoCrisiFinale; S.log.push(L.crisiPagata(params.costoCrisiFinale)); }
+          else { t.monete = 0; S.log.push(L.crisiBancarotta); }
         });
       }
 
-      teamA.storiaTappe.push({ tappa: tappaNumber, vs: teamB.nome, monete: teamA.monete, successo: teamA.puntiSuccesso, misericordia: teamA.puntiMisericordia, logs: logA });
-      teamB.storiaTappe.push({ tappa: tappaNumber, vs: teamA.nome, monete: teamB.monete, successo: teamB.puntiSuccesso, misericordia: teamB.puntiMisericordia, logs: logB });
+      entrambi.forEach(S => S.t.storiaTappe.push({ tappa: tappaNumber, vs: S.opp.nome, monete: S.t.monete, successo: S.t.puntiSuccesso, misericordia: S.t.puntiMisericordia, logs: S.log }));
     });
 
-    return { updatedMap: updatedSquadreMap, logs: currentLogs };
+    return { updatedMap: map, logs: currentLogs };
   };
 
   const advanceTappa = () => {
@@ -1149,68 +1162,35 @@ export default function App() {
 
         {/* TAB 2. MATCHMAKING BERGER */}
         {activeTab === 'matchmaking' && (
-          <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 overflow-x-auto">
-            <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Grid className="w-5 h-5 text-indigo-400" /> Matrice di Matchmaking (Vista per Tappa)
-              </h2>
+          <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6">
+            <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-slate-800">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2"><Grid className="w-5 h-5 text-indigo-400" /> {t.matriceBerger}</h2>
               <span className="text-xs text-slate-400">{t.partecipantiBerger(params.numSquadre, maxTappe)}</span>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {TAPPE_DISPONIBILI.slice(0, maxTappe).map((tappa, tIdx) => (
-                <div key={tappa.id} className="border rounded-2xl p-5 bg-slate-950/60 shadow-inner flex flex-col justify-between border-slate-800">
-                  <div>
-                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800 text-xs font-bold text-indigo-400">
-                      <span className="text-sm font-extrabold flex items-center gap-1.5 text-white">
-                        <span className="text-base">{tappa.icon}</span>
-                        Tappa {tappa.id}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-normal truncate max-w-[110px]">{tappa.name}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {scheduleMatchmaking.map(roundObj => {
+                const tema = temaTappa(roundObj.round, maxTappe);
+                const corrente = currentTappa === roundObj.round;
+                return (
+                  <div key={roundObj.round} className={`rounded-2xl p-4 border space-y-3 ${corrente ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-950/60 border-slate-800'}`}>
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-extrabold text-white"><span className="text-base">{tema.icon}</span>{t.tappaN(roundObj.round)}{corrente && <span className="text-[10px] text-amber-300 font-bold">• {t.correnteBadge}</span>}</div>
+                      <div className="text-[11px] text-indigo-300 font-semibold mt-0.5">{lang === 'zh' ? tema.zh : tema.it}</div>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">{tema.d[lang]}</p>
                     </div>
-                    
-                    <p className="text-[11px] text-slate-400 mb-3 italic">
-                      Squadre in sfida per ciascun Round (R):
-                    </p>
-
-                    <div className="space-y-2">
-                      {scheduleMatchmaking.map((roundObj) => {
-                        const matchInTappa = roundObj.matches.find(m => m.tappaId === tappa.id);
-                        if (!matchInTappa) return null;
-                        
-                        const isCurrentRound = currentTappa === roundObj.round;
-                        const nameA = `${t.teamPrefix} ${matchInTappa.teamAId}`;
-                        const nameB = `${t.teamPrefix} ${matchInTappa.teamBId}`;
-                        
-                        return (
-                          <div 
-                            key={roundObj.round} 
-                            className={`text-[11px] p-2.5 rounded-xl flex justify-between items-center border font-medium shadow-sm transition ${
-                              isCurrentRound 
-                                ? 'bg-amber-500/10 border-amber-500/40 text-amber-200' 
-                                : 'bg-slate-900/80 border-slate-800 text-slate-200 hover:border-slate-700'
-                            }`}
-                          >
-                            <span className={`text-[10px] font-extrabold mr-1 px-1.5 py-0.5 rounded ${
-                              isCurrentRound ? 'bg-amber-500/20 text-amber-300' : 'bg-indigo-500/10 text-indigo-400'
-                            }`}>
-                              R{roundObj.round}
-                            </span>
-                            <span className="truncate max-w-[35%] font-semibold">{nameA}</span>
-                            <span className="text-slate-500 font-extrabold px-1 text-[10px]">VS</span>
-                            <span className="truncate max-w-[35%] font-semibold">{nameB}</span>
-                          </div>
-                        );
-                      })}
+                    <div className="space-y-1.5">
+                      {roundObj.matches.map(m => (
+                        <div key={m.postazione} className="text-[11px] p-2 rounded-xl flex items-center gap-2 border border-slate-800 bg-slate-900/80 text-slate-200">
+                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 shrink-0">{lang === 'zh' ? '台' : 'Tav.'} {m.postazione}</span>
+                          <span className="truncate font-semibold">{t.teamPrefix} {m.teamAId}</span>
+                          <span className="text-slate-500 font-extrabold text-[10px]">VS</span>
+                          <span className="truncate font-semibold">{t.teamPrefix} {m.teamBId}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  
-                  <div className="mt-4 pt-3 border-t border-slate-800/80 text-[10px] text-slate-500 font-medium flex justify-between">
-                    <span>{maxTappe} Round totali</span>
-                    <span>1 Sfida per Round</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -1318,198 +1298,103 @@ export default function App() {
         )}
 
         {/* TAB 5. CONFIGURAZIONE */}
-        {activeTab === 'impostazioni' && (
-          <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl max-w-4xl mx-auto space-y-6">
-            <div className="flex flex-wrap justify-between items-center pb-4 border-b border-slate-800 gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-indigo-400" /> {t.configEconomica}
-                </h2>
-                <p className="text-xs text-emerald-400 mt-1 flex items-center gap-1 font-medium">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Le impostazioni vengono salvate automaticamente per le prossime sessioni.
-                </p>
-              </div>
+        {activeTab === 'impostazioni' && (() => {
+          const tx = (it, zh) => (lang === 'zh' ? zh : it);
+          const sez = CONFIG_SEZIONI.find(x => x.id === configCategory) || CONFIG_SEZIONI[0];
+          const pathsProfilo = GRUPPI_PERSONAGGIO.flatMap(g => g.campi.map(c => `${profiloAttivo}.${c.k}`));
+          const pathsSezione = sez.id === 'personaggi' ? pathsProfilo : sez.campi.map(c => c.k);
+          const campo = (def, path) => (
+            <ConfigField key={path} def={def} lang={lang} value={getVal(params, path)} defaultValue={getVal(DEFAULT_PARAMS, path)} onChange={v => setParam(path, v)} />
+          );
+          const nModificati = pathsSezione.filter(p => getVal(params, p) !== getVal(DEFAULT_PARAMS, p)).length;
+          return (
+            <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-[210px_1fr] gap-6">
+              <nav className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible md:sticky md:top-40 self-start">
+                {CONFIG_SEZIONI.map(c => {
+                  const Icon = c.icon;
+                  const paths = c.id === 'personaggi' ? PROFILI_ETICI.flatMap(e => GRUPPI_PERSONAGGIO.flatMap(g => g.campi.map(x => `${e}.${x.k}`))) : c.campi.map(x => x.k);
+                  const n = paths.filter(p => getVal(params, p) !== getVal(DEFAULT_PARAMS, p)).length;
+                  return (
+                    <button key={c.id} onClick={() => setConfigCategory(c.id)} className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-bold text-left transition shrink-0 cursor-pointer ${configCategory === c.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'}`}>
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="flex-1">{tx(c.it, c.zh)}</span>
+                      {n > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-extrabold">{n}</span>}
+                    </button>
+                  );
+                })}
+              </nav>
 
-              <button
-                onClick={handleResetToDefault}
-                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl flex items-center gap-2 border border-slate-700 transition cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5" /> {t.ripristinaDefault}
-              </button>
-            </div>
-
-            {/* SELEZIONE CATEGORIA CONFIGURAZIONE */}
-            <div className="flex gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
-              {[
-                { id: 'struttura', label: 'Struttura & Squadre', icon: Users },
-                { id: 'economia', label: 'Economia Base', icon: Scale },
-                { id: 'crisi', label: 'Tentazioni & Crisi', icon: Flame },
-                { id: 'premi', label: 'Minigiochi & Esiti', icon: Award }
-              ].map(cat => {
-                const Icon = cat.icon;
-                const isActive = configCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setConfigCategory(cat.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
-                      isActive 
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' 
-                        : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {cat.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* CATEGORIA 1: STRUTTURA */}
-            {configCategory === 'struttura' && (
-              <div className="space-y-4">
-                <div className="bg-slate-950/80 p-5 rounded-2xl border border-indigo-500/30 shadow-inner space-y-4">
+              <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6">
+                <div className="flex flex-wrap justify-between items-start gap-3 pb-4 border-b border-slate-800">
                   <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      <Users className="w-4 h-4 text-indigo-400" /> {t.numSquadreTappeTitolo}
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1">{t.numSquadreTappeDesc}</p>
+                    <h2 className="text-xl font-bold text-white">{tx(sez.it, sez.zh)}</h2>
+                    <p className="text-xs text-slate-400 mt-1">{tx('Le modifiche si salvano da sole. I valori cambiati rispetto al default sono evidenziati.', '修改会自动保存。与默认值不同的项会高亮显示。')}</p>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-3 pt-1">
-                    {[12, 14, 16].map(count => {
-                      const tappe = count === 12 ? 6 : count === 14 ? 7 : 8;
-                      const isSelected = params.numSquadre === count;
-                      return (
-                        <button
-                          key={count}
-                          onClick={() => handleSelectNumSquadre(count)}
-                          className={`p-3.5 rounded-2xl border text-center transition cursor-pointer flex flex-col items-center justify-center ${
-                            isSelected 
-                              ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500/50' 
-                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                          }`}
-                        >
-                          <span className="text-lg font-black text-white">{t.squadreCountLabel(count)}</span>
-                          <span className="text-xs text-indigo-400 font-extrabold mt-0.5">{t.tappeCountLabel(tappe)}</span>
-                        </button>
-                      );
-                    })}
+                  <div className="flex gap-2">
+                    <button disabled={nModificati === 0} onClick={() => ripristina(pathsSezione)} className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2 border border-slate-700 cursor-pointer">
+                      <RotateCcw className="w-3.5 h-3.5" /> {tx('Ripristina sezione', '恢复本节默认')}
+                    </button>
+                    <button onClick={() => (confermaReset ? handleResetToDefault() : setConfermaReset(true))} onBlur={() => setConfermaReset(false)} className={`px-3.5 py-2 text-xs font-bold rounded-xl border cursor-pointer ${confermaReset ? 'bg-rose-600 border-rose-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}>
+                      {confermaReset ? tx('Conferma: ripristina tutto', '确认：全部恢复') : t.ripristinaDefault}
+                    </button>
                   </div>
                 </div>
+
+                {configCambiata && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3">
+                    <span className="text-xs text-amber-200">{tx('Hai cambiato le regole dopo l\'avvio: valgono dalla prossima tappa, ma le tappe già giocate usavano le vecchie.', '开局后规则已更改：从下一阶段起生效，已进行的阶段仍使用旧规则。')}</span>
+                    <button onClick={initializeTeams} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold rounded-xl flex items-center gap-2 cursor-pointer"><RotateCcw className="w-3.5 h-3.5" /> {tx('Riavvia con le nuove regole', '以新规则重新开始')}</button>
+                  </div>
+                )}
+
+                {sez.id === 'partita' && (
+                  <div className="bg-slate-950/70 p-5 rounded-2xl border border-indigo-500/30 space-y-3">
+                    <h3 className="text-sm font-bold text-white">{t.numSquadreTappeTitolo}</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[12, 14, 16].map(count => (
+                        <button key={count} onClick={() => handleSelectNumSquadre(count)} className={`p-3 rounded-2xl border text-center cursor-pointer transition ${params.numSquadre === count ? 'bg-indigo-600/20 border-indigo-500 text-white ring-1 ring-indigo-500/50' : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'}`}>
+                          <span className="block text-base font-black text-white">{t.squadreCountLabel(count)}</span>
+                          <span className="block text-xs text-indigo-400 font-bold">{t.tappeCountLabel(count === 12 ? 6 : count === 14 ? 7 : 8)}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-slate-500">{tx('Cambiare il numero di squadre riavvia la partita.', '更改队伍数量会重新开始对局。')}</p>
+                  </div>
+                )}
+
+                {sez.id !== 'personaggi' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{sez.campi.map(c => campo(c, c.k))}</div>
+                )}
+
+                {sez.id === 'personaggi' && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-3 gap-2">
+                      {PROFILI_ETICI.map(e => (
+                        <button key={e} onClick={() => setProfiloAttivo(e)} className={`px-3 py-3 rounded-2xl border text-xs font-extrabold cursor-pointer transition ${profiloAttivo === e ? PROFILI_INFO[e].stile + ' ring-1 ring-white/10' : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-800'}`}>
+                          {tx(PROFILI_INFO[e].it, PROFILI_INFO[e].zh)}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-300 bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3">{PROFILI_INFO[profiloAttivo].d[lang]} <span className="text-slate-500">{tx('Il clima globale (−100% … +100%) è quello impostato nel Tabellone.', '全局气候（−100% … +100%）在面板中设置。')}</span></p>
+                    {GRUPPI_PERSONAGGIO.map(g => (
+                      <section key={g.id} className="space-y-3">
+                        <h3 className="text-sm font-bold text-white border-b border-slate-800 pb-2">{tx(g.it, g.zh)}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{g.campi.map(c => campo(c, `${profiloAttivo}.${c.k}`))}</div>
+                      </section>
+                    ))}
+                  </div>
+                )}
+
+                <div className="pt-4 border-t border-slate-800 flex flex-wrap justify-between items-center gap-3">
+                  <span className="text-xs text-slate-500">{tx('Vuoi ripartire da zero con queste regole?', '想用这些规则从头开始吗？')}</span>
+                  <button onClick={initializeTeams} className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer">
+                    <RotateCcw className="w-4 h-4" /> {tx('Riavvia la simulazione', '重新开始模拟')}
+                  </button>
+                </div>
               </div>
-            )}
-
-            {/* CONTROL INPUT REUSABLE RENDER */}
-            {configCategory !== 'struttura' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                {configCategory === 'economia' && [
-                  { key: 'moneteBase', label: t.moneteBaseLabel, step: 5, min: 0 },
-                  { key: 'costoIngressoTappa', label: t.costoIngressoLabel, step: 1, min: 0 },
-                  { key: 'bonusPuntualita', label: t.bonusPuntualitaLabel, step: 1, min: 0 },
-                  { key: 'valoreDecimaFissa', label: t.decimaFedeLabel, step: 1, min: 0 },
-                  { key: 'moneteDaVenditaSuccesso', label: t.moneteVenditaSuccessoLabel, step: 5, min: 0 }
-                ].map(item => (
-                  <div key={item.key} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between">
-                    <label className="font-semibold text-slate-300 block mb-2">{item.label}</label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => updateSingleParam(item.key, Math.max(item.min, params[item.key] - item.step))}
-                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
-                      >
-                        -
-                      </button>
-                      <input 
-                        type="number" 
-                        value={params[item.key]} 
-                        onChange={e => updateSingleParam(item.key, e.target.value)}
-                        className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-center text-white font-extrabold text-sm focus:outline-none focus:border-indigo-500"
-                      />
-                      <button
-                        onClick={() => updateSingleParam(item.key, params[item.key] + item.step)}
-                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                {configCategory === 'crisi' && [
-                  { key: 'costoTentazione', label: t.costoTentazioneLabel, step: 1, min: 0 },
-                  { key: 'costoMisericordiaTentazione', label: "Perdita Misericordia da Tentazione", step: 1, min: 0 },
-                  { key: 'costoCrisiTappa3', label: t.costoCrisiIntermediaLabel, step: 5, min: 0 },
-                  { key: 'costoCrisiTappa7', label: t.costoCrisiLabel, step: 5, min: 0 }
-                ].map(item => (
-                  <div key={item.key} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between">
-                    <label className="font-semibold text-slate-300 block mb-2">{item.label}</label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => updateSingleParam(item.key, Math.max(item.min, params[item.key] - item.step))}
-                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
-                      >
-                        -
-                      </button>
-                      <input 
-                        type="number" 
-                        value={params[item.key]} 
-                        onChange={e => updateSingleParam(item.key, e.target.value)}
-                        className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-center text-white font-extrabold text-sm focus:outline-none focus:border-indigo-500"
-                      />
-                      <button
-                        onClick={() => updateSingleParam(item.key, params[item.key] + item.step)}
-                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                {configCategory === 'premi' && [
-                  { key: 'puntiVittoriaEgoista', label: t.puntiEgoistaLabel, step: 1, min: 0 },
-                  { key: 'moneteVittoriaEgoista', label: t.moneteEgoistaLabel, step: 5, min: 0 },
-                  { key: 'puntiVittoriaSolidale', label: t.puntiSolidaleLabel, step: 1, min: 0 },
-                  { key: 'moneteVittoriaSolidale', label: t.moneteSolidaleLabel, step: 5, min: 0 }
-                ].map(item => (
-                  <div key={item.key} className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between">
-                    <label className="font-semibold text-slate-300 block mb-2">{item.label}</label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => updateSingleParam(item.key, Math.max(item.min, params[item.key] - item.step))}
-                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
-                      >
-                        -
-                      </button>
-                      <input 
-                        type="number" 
-                        value={params[item.key]} 
-                        onChange={e => updateSingleParam(item.key, e.target.value)}
-                        className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-center text-white font-extrabold text-sm focus:outline-none focus:border-indigo-500"
-                      />
-                      <button
-                        onClick={() => updateSingleParam(item.key, params[item.key] + item.step)}
-                        className="w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 text-base flex items-center justify-center cursor-pointer transition active:scale-95"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="pt-4 border-t border-slate-800 flex justify-between items-center">
-              <span className="text-xs text-slate-500 font-medium">Clicca per applicare le modifiche alla simulazione corrente</span>
-              <button 
-                onClick={initializeTeams} 
-                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition active:scale-95 cursor-pointer"
-              >
-                <RotateCcw className="w-4 h-4" /> {t.applicaResetta}
-              </button>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
       </main>
     </div>
