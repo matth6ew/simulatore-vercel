@@ -153,8 +153,8 @@ const DIZIONARIO = {
     analisiTitolo: "Analisi su molte partite",
     analisiDesc: (c) => `Una sola partita dipende molto dal caso. Qui vengono simulate molte partite complete con le regole attuali e un clima del ${c}.`,
     analisiNumero: "Numero di partite",
-    analisiMescola: "Mescola le abilità a ogni partita",
-    analisiMescolaHint: "Così l'abilità non è legata al profilo etico: senza mescolare, ogni profilo avrebbe sempre le stesse combinazioni di abilità.",
+    analisiMescola: "Mescola abilità e profili a ogni partita",
+    analisiMescolaHint: "Abilità e profilo etico vengono assegnati a caso alle squadre a ogni partita. Senza mescolare, il calendario è fisso: ogni profilo incontrerebbe sempre gli stessi avversari e avrebbe sempre le stesse combinazioni di abilità.",
     analisiAvvia: "Avvia analisi",
     analisiAnnulla: "Annulla",
     analisiProgresso: (d, tot) => `${d} / ${tot} partite`,
@@ -167,7 +167,7 @@ const DIZIONARIO = {
     analisiGrafico: "Quanto spesso ogni profilo arriva primo",
     analisiGraficoApp: "Primo per Successo",
     analisiGraficoReale: "Primo per Misericordia",
-    analisiNotaSD: "± indica la deviazione standard della media del profilo tra le partite. Un profilo con più squadre ha più possibilità di arrivare primo: confrontalo con la colonna Squadre.",
+    analisiNotaSD: "± indica la deviazione standard della media del profilo tra le partite. Un profilo con più squadre ha più possibilità di arrivare primo: confrontalo con la colonna Squadre. In caso di parità perfetta (stessi punti e stesse monete) il primo posto è diviso in parti uguali tra le squadre a pari merito.",
     avversarioCol: "Ultimo avversario",
     riepilogoLabels: { tentazioni: "tentazioni cedute", donazioni: "donazioni", rifiuti: "aiuti negati", chiesa: "soccorsi della Chiesa", bancarotte: "bancarotte", fede: "scelte di Fede" },
     riepilogoVuoto: "Nessun evento rilevante in questa tappa.",
@@ -288,8 +288,8 @@ const DIZIONARIO = {
     analisiTitolo: "多局对局分析",
     analisiDesc: (c) => `单局结果很大程度取决于运气。这里按当前规则和 ${c} 的气候模拟多局完整对局。`,
     analisiNumero: "对局数量",
-    analisiMescola: "每局随机打乱能力",
-    analisiMescolaHint: "这样能力与伦理类型无关；否则各类型总是带着固定的能力组合。",
+    analisiMescola: "每局随机打乱能力与伦理类型",
+    analisiMescolaHint: "每局随机把能力和伦理类型分配给各队。不打乱的话，赛程是固定的：各类型总会遇到相同的对手，也总带着固定的能力组合。",
     analisiAvvia: "开始分析",
     analisiAnnulla: "取消",
     analisiProgresso: (d, tot) => `${d} / ${tot} 局`,
@@ -302,7 +302,7 @@ const DIZIONARIO = {
     analisiGrafico: "各类型夺冠频率",
     analisiGraficoApp: "成功点数第一",
     analisiGraficoReale: "仁慈第一",
-    analisiNotaSD: "± 表示各局中该类型平均值的标准差。队伍更多的类型更容易夺冠，请与“队伍数”列对照。",
+    analisiNotaSD: "± 表示各局中该类型平均值的标准差。队伍更多的类型更容易夺冠，请与“队伍数”列对照。若出现完全并列（积分与金币都相同），第一名由并列队伍平分。",
     avversarioCol: "上一对手",
     riepilogoLabels: { tentazioni: "次屈服诱惑", donazioni: "次捐助", rifiuti: "次拒绝帮助", chiesa: "次教会救助", bancarotte: "次破产", fede: "人选择信仰" },
     riepilogoVuoto: "本阶段没有重要事件。",
@@ -802,7 +802,9 @@ export default function App() {
     scheduleMatchmaking[tappaNumber - 1].matches.forEach(match => {
       const tA = map.get(match.teamAId), tB = map.get(match.teamBId);
       if (!tA || !tB) return;
-      const mk = (t, opp) => ({ t, opp, log: [], cede: false, etica: getEticaEffettivaSquadra(t.id - 1, tot, clima), oppS: null });
+      // `eticaFissa` è impostata solo dall'analisi su molte partite (profili mescolati tra le posizioni del calendario);
+      // nella partita normale non esiste e l'etica resta quella prevista dal clima per quell'id.
+      const mk = (t, opp) => ({ t, opp, log: [], cede: false, etica: t.eticaFissa || getEticaEffettivaSquadra(t.id - 1, tot, clima), oppS: null });
       const A = mk(tA, tB), B = mk(tB, tA);
       A.oppS = B; B.oppS = A;
       const entrambi = [A, B];
@@ -969,6 +971,20 @@ export default function App() {
 
   const media = (a) => a.reduce((x, y) => x + y, 0) / a.length;
   const devStd = (a) => { const m = media(a); return Math.sqrt(media(a.map(v => (v - m) ** 2))); };
+  const mescola = (a) => {
+    const r = [...a];
+    for (let i = r.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [r[i], r[j]] = [r[j], r[i]];
+    }
+    return r;
+  };
+  // Squadre al primo posto a pari merito (stessi punti e stesse monete, come nelle classifiche).
+  // Non si sceglie in base all'ordine dell'array: ordinando, vincerebbe sempre l'id più basso, cioè una virtuosa.
+  const inTesta = (finali, campoPunti) => {
+    const ord = [...finali].sort((a, b) => b[campoPunti] - a[campoPunti] || b.monete - a.monete);
+    return ord.filter(x => x[campoPunti] === ord[0][campoPunti] && x.monete === ord[0].monete);
+  };
 
   const eseguiBatch = () => {
     if (batch.running) return;
@@ -984,21 +1000,23 @@ export default function App() {
     const unaPartita = () => {
       const iniziali = creaSquadre();
       if (mescolaSkill) {
-        const skills = iniziali.map(x => x.skill);
-        for (let i = skills.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [skills[i], skills[j]] = [skills[j], skills[i]];
-        }
-        iniziali.forEach((x, i) => { x.skill = skills[i]; });
+        // Abilità e profilo etico vengono assegnati a caso alle posizioni del calendario (indipendentemente tra loro).
+        // Il numero di squadre per profilo resta quello deciso dal clima.
+        const skills = mescola(iniziali.map(x => x.skill));
+        const etiche = mescola(iniziali.map(x => x.etica));
+        iniziali.forEach((x, i) => { x.skill = skills[i]; x.etica = etiche[i]; x.eticaFissa = etiche[i]; });
       }
       let mappa = new Map(iniziali.map(x => [x.id, x]));
       for (let tp = 1; tp <= maxTappe; tp++) mappa = simulateSingleTappa(tp, mappa).updatedMap;
       const finali = Array.from(mappa.values());
-      const primoApp = [...finali].sort((a, b) => b.puntiSuccesso - a.puntiSuccesso || b.monete - a.monete)[0];
-      const primoReale = [...finali].sort((a, b) => b.puntiMisericordia - a.puntiMisericordia || b.monete - a.monete)[0];
-      if (primoApp.id !== primoReale.id) divergenze++;
-      perProfilo[primoApp.etica].primoApp++;
-      perProfilo[primoReale.etica].primoReale++;
+      // Pareggio perfetto: il primo posto si divide in parti uguali tra le squadre a pari merito.
+      const topApp = inTesta(finali, 'puntiSuccesso');
+      const topReale = inTesta(finali, 'puntiMisericordia');
+      // Probabilità che i due "primi" siano la stessa squadra, scegliendo a caso tra i pari merito.
+      const stessaSquadra = topApp.filter(x => topReale.some(y => y.id === x.id)).length / (topApp.length * topReale.length);
+      divergenze += 1 - stessaSquadra;
+      topApp.forEach(x => { perProfilo[x.etica].primoApp += 1 / topApp.length; });
+      topReale.forEach(x => { perProfilo[x.etica].primoReale += 1 / topReale.length; });
       PROFILI_ETICI.forEach(e => {
         const g = finali.filter(x => x.etica === e);
         perProfilo[e].n = g.length;
