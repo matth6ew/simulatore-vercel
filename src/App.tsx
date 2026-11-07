@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Play, 
   RotateCcw, 
@@ -22,6 +22,8 @@ import {
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -147,6 +149,25 @@ const DIZIONARIO = {
     vistaTabella: "Tabella",
     squadraCol: "Squadra",
     eticaCol: "Etica",
+    analisi: "Analisi",
+    analisiTitolo: "Analisi su molte partite",
+    analisiDesc: (c) => `Una sola partita dipende molto dal caso. Qui vengono simulate molte partite complete con le regole attuali e un clima del ${c}.`,
+    analisiNumero: "Numero di partite",
+    analisiMescola: "Mescola le abilità a ogni partita",
+    analisiMescolaHint: "Così l'abilità non è legata al profilo etico: senza mescolare, ogni profilo avrebbe sempre le stesse combinazioni di abilità.",
+    analisiAvvia: "Avvia analisi",
+    analisiAnnulla: "Annulla",
+    analisiProgresso: (d, tot) => `${d} / ${tot} partite`,
+    analisiObsoleta: "Regole o clima sono cambiati dopo questa analisi: rilancia per aggiornarla.",
+    analisiDivergenza: (p, n) => `In ${p}% delle ${n} partite la squadra prima per Successo non è la prima per Misericordia.`,
+    analisiTabellaTitolo: "Medie per profilo etico (± variazione tra partite)",
+    analisiColSquadre: "Squadre",
+    analisiColApp: "1° per Successo",
+    analisiColReale: "1° per Misericordia",
+    analisiGrafico: "Quanto spesso ogni profilo arriva primo",
+    analisiGraficoApp: "Primo per Successo",
+    analisiGraficoReale: "Primo per Misericordia",
+    analisiNotaSD: "± indica la deviazione standard della media del profilo tra le partite. Un profilo con più squadre ha più possibilità di arrivare primo: confrontalo con la colonna Squadre.",
     avversarioCol: "Ultimo avversario",
     riepilogoLabels: { tentazioni: "tentazioni cedute", donazioni: "donazioni", rifiuti: "aiuti negati", chiesa: "soccorsi della Chiesa", bancarotte: "bancarotte", fede: "scelte di Fede" },
     riepilogoVuoto: "Nessun evento rilevante in questa tappa.",
@@ -263,6 +284,25 @@ const DIZIONARIO = {
     vistaTabella: "表格",
     squadraCol: "队伍",
     eticaCol: "伦理",
+    analisi: "分析",
+    analisiTitolo: "多局对局分析",
+    analisiDesc: (c) => `单局结果很大程度取决于运气。这里按当前规则和 ${c} 的气候模拟多局完整对局。`,
+    analisiNumero: "对局数量",
+    analisiMescola: "每局随机打乱能力",
+    analisiMescolaHint: "这样能力与伦理类型无关；否则各类型总是带着固定的能力组合。",
+    analisiAvvia: "开始分析",
+    analisiAnnulla: "取消",
+    analisiProgresso: (d, tot) => `${d} / ${tot} 局`,
+    analisiObsoleta: "规则或气候在本次分析后已更改：请重新运行以更新。",
+    analisiDivergenza: (p, n) => `在 ${n} 局中，有 ${p}% 的对局里成功点数第一的队伍不是仁慈第一。`,
+    analisiTabellaTitolo: "各伦理类型平均值（± 局间波动）",
+    analisiColSquadre: "队伍数",
+    analisiColApp: "成功第一",
+    analisiColReale: "仁慈第一",
+    analisiGrafico: "各类型夺冠频率",
+    analisiGraficoApp: "成功点数第一",
+    analisiGraficoReale: "仁慈第一",
+    analisiNotaSD: "± 表示各局中该类型平均值的标准差。队伍更多的类型更容易夺冠，请与“队伍数”列对照。",
     avversarioCol: "上一对手",
     riepilogoLabels: { tentazioni: "次屈服诱惑", donazioni: "次捐助", rifiuti: "次拒绝帮助", chiesa: "次教会救助", bancarotte: "次破产", fede: "人选择信仰" },
     riepilogoVuoto: "本阶段没有重要事件。",
@@ -568,6 +608,10 @@ export default function App() {
   const [ordinaPer, setOrdinaPer] = useState('id');
   const [filtroEtica, setFiltroEtica] = useState('TUTTE');
   const [vistaTabellone, setVistaTabellone] = useState('card');
+  const [nPartite, setNPartite] = useState(100);
+  const [mescolaSkill, setMescolaSkill] = useState(true);
+  const [batch, setBatch] = useState({ running: false, done: 0, total: 0, risultati: null });
+  const batchAnnulla = useRef(false);
 
   const handleSelectNumSquadre = (count) => {
     if (![12, 14, 16].includes(count)) return;
@@ -685,9 +729,10 @@ export default function App() {
     return rounds;
   }, [params.numSquadre, maxTappe]);
 
-  const initializeTeams = useCallback(() => {
+  // Squadre di partenza di una nuova partita (usata dal Reset e dall'analisi su molte partite).
+  const creaSquadre = useCallback(() => {
     const n = params.numSquadre;
-    const newSquadre = generateDefaultArchetipi(n).map(arch => {
+    return generateDefaultArchetipi(n).map(arch => {
       const randCoins = [10, 20, 30][Math.floor(Math.random() * 3)];
       return {
         ...arch,
@@ -703,6 +748,10 @@ export default function App() {
         bonusPuntualitaAccumulati: 0
       };
     });
+  }, [params, getEticaEffettivaSquadra]);
+
+  const initializeTeams = useCallback(() => {
+    const newSquadre = creaSquadre();
 
     setSquadre(newSquadre);
     setParamsAvvio(firma(params));
@@ -710,7 +759,7 @@ export default function App() {
     setViewedTappa(0);
     setHistory([{ tappa: 0, squadre: newSquadre.map(s => ({ ...s })) }]);
     setEventLogs([{ tappa: 0, testo: `Simulazione inizializzata!` }]);
-  }, [params, getEticaEffettivaSquadra]);
+  }, [params, creaSquadre]);
 
   // Parte al montaggio e ogni volta che `riavvio` cambia (nuovo numero di squadre, reset). Non dipende dalla lingua.
   useEffect(() => {
@@ -918,6 +967,68 @@ export default function App() {
     setEventLogs(prev => [...prev, ...newLogsEntries]);
   };
 
+  const media = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const devStd = (a) => { const m = media(a); return Math.sqrt(media(a.map(v => (v - m) ** 2))); };
+
+  const eseguiBatch = () => {
+    if (batch.running) return;
+    const totale = nPartite;
+    const chiave = JSON.stringify(params) + '|' + mescolaSkill;
+    const perProfilo = {};
+    PROFILI_ETICI.forEach(e => { perProfilo[e] = { n: 0, monete: [], successo: [], misericordia: [], primoApp: 0, primoReale: 0 }; });
+    let divergenze = 0;
+    let fatte = 0;
+    batchAnnulla.current = false;
+    setBatch({ running: true, done: 0, total: totale, risultati: null });
+
+    const unaPartita = () => {
+      const iniziali = creaSquadre();
+      if (mescolaSkill) {
+        const skills = iniziali.map(x => x.skill);
+        for (let i = skills.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [skills[i], skills[j]] = [skills[j], skills[i]];
+        }
+        iniziali.forEach((x, i) => { x.skill = skills[i]; });
+      }
+      let mappa = new Map(iniziali.map(x => [x.id, x]));
+      for (let tp = 1; tp <= maxTappe; tp++) mappa = simulateSingleTappa(tp, mappa).updatedMap;
+      const finali = Array.from(mappa.values());
+      const primoApp = [...finali].sort((a, b) => b.puntiSuccesso - a.puntiSuccesso || b.monete - a.monete)[0];
+      const primoReale = [...finali].sort((a, b) => b.puntiMisericordia - a.puntiMisericordia || b.monete - a.monete)[0];
+      if (primoApp.id !== primoReale.id) divergenze++;
+      perProfilo[primoApp.etica].primoApp++;
+      perProfilo[primoReale.etica].primoReale++;
+      PROFILI_ETICI.forEach(e => {
+        const g = finali.filter(x => x.etica === e);
+        perProfilo[e].n = g.length;
+        if (g.length === 0) return;
+        perProfilo[e].monete.push(media(g.map(x => x.monete)));
+        perProfilo[e].successo.push(media(g.map(x => x.puntiSuccesso)));
+        perProfilo[e].misericordia.push(media(g.map(x => x.puntiMisericordia)));
+      });
+    };
+
+    const passo = () => {
+      if (batchAnnulla.current) { setBatch(b => ({ ...b, running: false })); return; }
+      const limite = Math.min(totale, fatte + 10);
+      while (fatte < limite) { unaPartita(); fatte++; }
+      if (fatte < totale) { setBatch(b => ({ ...b, done: fatte })); setTimeout(passo, 0); return; }
+      const stat = (arr) => (arr.length ? { m: media(arr), sd: devStd(arr) } : null);
+      const risultati = {
+        chiave,
+        n: totale,
+        divergenzaPerc: Math.round((divergenze / totale) * 100),
+        profili: PROFILI_ETICI.map(e => {
+          const q = perProfilo[e];
+          return { etica: e, n: q.n, monete: stat(q.monete), successo: stat(q.successo), misericordia: stat(q.misericordia), primoApp: Math.round((q.primoApp / totale) * 100), primoReale: Math.round((q.primoReale / totale) * 100) };
+        })
+      };
+      setBatch({ running: false, done: totale, total: totale, risultati });
+    };
+    setTimeout(passo, 0);
+  };
+
   // Etica mostrata = quella USATA nell'ultima tappa giocata. L'etica prevista dal clima attuale vale dalla prossima tappa.
   // Prima della tappa 1 non c'è nulla di "usato": si mostra direttamente quella prevista.
   const displayedSquadre = useMemo(() => {
@@ -1123,6 +1234,12 @@ export default function App() {
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${activeTab === 'grafici' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
           >
             <TrendingUp className="w-4 h-4" /> {t.grafici}
+          </button>
+          <button 
+            onClick={() => setActiveTab('analisi')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${activeTab === 'analisi' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+          >
+            <BarChart2 className="w-4 h-4" /> {t.analisi}
           </button>
           <button 
             onClick={() => setActiveTab('impostazioni')}
@@ -1525,6 +1642,113 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* TAB 4b. ANALISI SU MOLTE PARTITE */}
+        {activeTab === 'analisi' && (() => {
+          const r = batch.risultati;
+          const obsoleta = r && r.chiave !== JSON.stringify(params) + '|' + mescolaSkill;
+          const pm = (x) => (x ? `${x.m.toFixed(1)} ± ${x.sd.toFixed(1)}` : '—');
+          const datiGrafico = r ? r.profili.filter(x => x.n > 0).map(x => ({ nome: t.eticaNames[x.etica], app: x.primoApp, reale: x.primoReale })) : [];
+          const climaTxt = `${params.eticitaGlobalePerc > 0 ? '+' : ''}${params.eticitaGlobalePerc}%`;
+          const perc = batch.total ? Math.round((batch.done / batch.total) * 100) : 0;
+          return (
+            <div className="max-w-5xl mx-auto space-y-6">
+              <section className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-5">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2"><BarChart2 className="w-5 h-5 text-indigo-400" /> {t.analisiTitolo}</h2>
+                  <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">{t.analisiDesc(climaTxt)}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div role="group" aria-label={t.analisiNumero} className="flex items-center gap-1.5 bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800">
+                    <span className="text-xs font-bold text-slate-400 px-2">{t.analisiNumero}</span>
+                    {[50, 100, 500].map(n => (
+                      <button key={n} aria-pressed={nPartite === n} disabled={batch.running} onClick={() => setNPartite(n)} className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition disabled:opacity-50 ${nPartite === n ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>{n}</button>
+                    ))}
+                  </div>
+                  <label className="flex items-start gap-2 text-xs text-slate-300 cursor-pointer max-w-sm">
+                    <input type="checkbox" checked={mescolaSkill} disabled={batch.running} onChange={e => setMescolaSkill(e.target.checked)} className="mt-0.5 accent-indigo-500" />
+                    <span><b className="text-slate-100">{t.analisiMescola}</b><span className="block text-[11px] text-slate-500 leading-snug">{t.analisiMescolaHint}</span></span>
+                  </label>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {batch.running ? (
+                    <>
+                      <div className="flex-1 min-w-[180px] space-y-1">
+                        <div role="progressbar" aria-valuemin={0} aria-valuemax={batch.total} aria-valuenow={batch.done} className="h-2 rounded-full bg-slate-800 overflow-hidden">
+                          <div className="h-full bg-indigo-500 transition-all" style={{ width: `${perc}%` }} />
+                        </div>
+                        <span className="text-[11px] text-slate-400">{t.analisiProgresso(batch.done, batch.total)}</span>
+                      </div>
+                      <button onClick={() => { batchAnnulla.current = true; }} className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 cursor-pointer">{t.analisiAnnulla}</button>
+                    </>
+                  ) : (
+                    <button onClick={eseguiBatch} className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer">
+                      <Play className="w-3.5 h-3.5 fill-current" /> {t.analisiAvvia}
+                    </button>
+                  )}
+                </div>
+              </section>
+
+              {r && (
+                <section className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6">
+                  {obsoleta && <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 text-xs text-amber-200">{t.analisiObsoleta}</div>}
+                  <p className="text-sm text-slate-200 max-w-3xl leading-relaxed">{t.analisiDivergenza(r.divergenzaPerc, r.n)}</p>
+
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-400 mb-2">{t.analisiTabellaTitolo}</h3>
+                    <div className="overflow-x-auto rounded-2xl border border-slate-800">
+                      <table className="w-full text-xs tabular-nums">
+                        <thead>
+                          <tr className="text-left text-slate-400 border-b border-slate-800">
+                            <th className="px-4 py-3 font-bold">{t.eticaCol}</th>
+                            <th className="px-3 py-3 font-bold text-right">{t.analisiColSquadre}</th>
+                            <th className="px-3 py-3 font-bold text-right">{t.monete}</th>
+                            <th className="px-3 py-3 font-bold text-right">{t.successo}</th>
+                            <th className="px-3 py-3 font-bold text-right">{t.misericordia}</th>
+                            <th className="px-3 py-3 font-bold text-right">{t.analisiColApp}</th>
+                            <th className="px-4 py-3 font-bold text-right">{t.analisiColReale}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {r.profili.map(x => (
+                            <tr key={x.etica} className="border-b border-slate-800/60">
+                              <td className="px-4 py-2.5"><span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border uppercase tracking-wider ${ETICA_BADGE[x.etica]}`}>{t.eticaNames[x.etica]}</span></td>
+                              <td className="px-3 py-2.5 text-right text-slate-300">{x.n}</td>
+                              <td className="px-3 py-2.5 text-right font-bold text-amber-400">{pm(x.monete)}</td>
+                              <td className="px-3 py-2.5 text-right font-bold text-indigo-400">{pm(x.successo)}</td>
+                              <td className="px-3 py-2.5 text-right font-bold text-emerald-400">{pm(x.misericordia)}</td>
+                              <td className="px-3 py-2.5 text-right text-slate-200">{x.n ? `${x.primoApp}%` : '—'}</td>
+                              <td className="px-4 py-2.5 text-right text-slate-200">{x.n ? `${x.primoReale}%` : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-400 mb-2">{t.analisiGrafico}</h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={datiGrafico}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                          <XAxis dataKey="nome" stroke="#94a3b8" />
+                          <YAxis stroke="#94a3b8" unit="%" domain={[0, 100]} />
+                          <Tooltip formatter={(v) => `${v}%`} contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '16px' }} />
+                          <Legend />
+                          <Bar dataKey="app" name={t.analisiGraficoApp} fill="#6366F1" radius={[6, 6, 0, 0]} />
+                          <Bar dataKey="reale" name={t.analisiGraficoReale} fill="#10B981" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 leading-snug max-w-3xl">{t.analisiNotaSD}</p>
+                </section>
+              )}
+            </div>
+          );
+        })()}
 
         {/* TAB 5. CONFIGURAZIONE */}
         {activeTab === 'impostazioni' && (() => {
