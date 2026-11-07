@@ -67,7 +67,7 @@ export function TabImpostazioni({
 
         {configCambiata && (
           <div className="flex flex-wrap items-center justify-between gap-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3">
-            <span className="text-xs text-amber-200">{tx('Hai cambiato le regole dopo l'avvio: valgono dalla prossima tappa, ma le tappe già giocate usavano le vecchie.', '开局后规则已更改：从下一阶段起生效，已进行的阶段仍使用旧规则。')}</span>
+            <span className="text-xs text-amber-200">{tx("Hai cambiato le regole dopo l'avvio: valgono dalla prossima tappa, ma le tappe già giocate usavano le vecchie.", '开局后规则已更改：从下一阶段起生效，已进行的阶段仍使用旧规则。')}</span>
             <button onClick={initializeTeams} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold rounded-xl flex items-center gap-2 cursor-pointer"><RotateCcw className="w-3.5 h-3.5" /> {tx('Riavvia con le nuove regole', '以新规则重新开始')}</button>
           </div>
         )}
