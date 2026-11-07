@@ -15,7 +15,9 @@ import {
   Flame,
   Scale,
   Compass,
-  BarChart2
+  BarChart2,
+  LayoutGrid,
+  Table as TableIcon
 } from 'lucide-react';
 import {
   LineChart,
@@ -133,6 +135,30 @@ const DIZIONARIO = {
     applicaResetta: "Applica e Salva Impostazioni",
     ripristinaDefault: "Ripristina Default",
     teamPrefix: "Squadra",
+    credente: "Ha scelto la Fede",
+    climaNotaProssima: (n) => `Il clima vale dalla tappa ${n} in poi: le tappe già giocate non cambiano.`,
+    climaNotaFine: "La simulazione è conclusa: il clima non ha più effetto.",
+    prossimaLabel: "Etica delle squadre nella prossima tappa",
+    prossimaTitle: "Etica usata nell'ultima tappa → prevista per la prossima",
+    ordinaPer: "Ordina per",
+    ordId: "Numero",
+    filtroTutte: "Tutte",
+    vistaCard: "Schede",
+    vistaTabella: "Tabella",
+    squadraCol: "Squadra",
+    eticaCol: "Etica",
+    avversarioCol: "Ultimo avversario",
+    riepilogoLabels: { tentazioni: "tentazioni cedute", donazioni: "donazioni", rifiuti: "aiuti negati", chiesa: "soccorsi della Chiesa", bancarotte: "bancarotte", fede: "scelte di Fede" },
+    riepilogoVuoto: "Nessun evento rilevante in questa tappa.",
+    simulazioneConclusa: "Simulazione conclusa.",
+    vediRisultato: "Vedi chi ha vinto davvero nelle Classifiche",
+    titoloFinale: "Risultato finale: chi vince davvero?",
+    finaleCoincidono: (n) => `${n} è prima sia per Successo sia per Misericordia: qui apparenza e realtà coincidono.`,
+    finaleDivergono: (a, r, b) => `${a} vince per Successo, ma è solo ${r}ª per Misericordia. In testa alla classifica reale c'è ${b}.`,
+    profiliMedie: "Media per profilo etico",
+    rangoReale: (n) => `Reale #${n}`,
+    rangoApp: (n) => `Apparente #${n}`,
+    spostamentoTitle: "Posizioni guadagnate (▲) o perse (▼) rispetto alla classifica apparente",
     eticaNames: { VIRTUOSA: "VIRTUOSA", OPPORTUNISTA: "OPPORTUNISTA", EGOISTA: "EGOISTA" },
     skillNames: { ALTA: "ALTA", MEDIA: "MEDIA", BASSA: "BASSA" },
     descSquadra: (skill) => `Squadra con abilità nei minigiochi ${skill.toLowerCase()}.`,
@@ -225,6 +251,30 @@ const DIZIONARIO = {
     applicaResetta: "应用并保存配置",
     ripristinaDefault: "恢复默认设置",
     teamPrefix: "队伍",
+    credente: "选择了信仰",
+    climaNotaProssima: (n) => `气候从第 ${n} 阶段起生效，已进行的阶段不变。`,
+    climaNotaFine: "模拟已结束：气候不再产生影响。",
+    prossimaLabel: "下一阶段各队伍的伦理类型",
+    prossimaTitle: "上一阶段所用类型 → 下一阶段预计类型",
+    ordinaPer: "排序",
+    ordId: "编号",
+    filtroTutte: "全部",
+    vistaCard: "卡片",
+    vistaTabella: "表格",
+    squadraCol: "队伍",
+    eticaCol: "伦理",
+    avversarioCol: "上一对手",
+    riepilogoLabels: { tentazioni: "次屈服诱惑", donazioni: "次捐助", rifiuti: "次拒绝帮助", chiesa: "次教会救助", bancarotte: "次破产", fede: "人选择信仰" },
+    riepilogoVuoto: "本阶段没有重要事件。",
+    simulazioneConclusa: "模拟已结束。",
+    vediRisultato: "在排行榜中查看真正的赢家",
+    titoloFinale: "最终结果：谁才是真正的赢家？",
+    finaleCoincidono: (n) => `${n} 在成功点数和仁慈上均排第一：表象与真实一致。`,
+    finaleDivergono: (a, r, b) => `${a} 以成功点数获胜，但仁慈仅排第 ${r}。真实排行榜第一是 ${b}。`,
+    profiliMedie: "各伦理类型平均值",
+    rangoReale: (n) => `真实 #${n}`,
+    rangoApp: (n) => `表观 #${n}`,
+    spostamentoTitle: "相对表观排行榜上升(▲)或下降(▼)的名次",
     eticaNames: { VIRTUOSA: "美德", OPPORTUNISTA: "机会主义", EGOISTA: "利己" },
     skillNames: { ALTA: "高", MEDIA: "中", BASSA: "低" },
     descSquadra: (skill) => `具备${skill === 'ALTA' ? '高' : skill === 'MEDIA' ? '中' : '低'}能力的小游戏队伍。`,
@@ -320,20 +370,24 @@ const getVal = (p, path) => {
 // firma dei parametri escluso il clima (che è pensato per essere modificato in tempo reale)
 const firma = (p) => JSON.stringify({ ...p, eticitaGlobalePerc: 0 });
 
-const generateDefaultArchetipi = (count, lang) => {
-  return Array.from({ length: count }, (_, i) => {
-    const eticaBase = i % 3 === 0 ? "VIRTUOSA" : i % 3 === 1 ? "OPPORTUNISTA" : "EGOISTA";
-    const skill = SKILL_LEVELS[i % SKILL_LEVELS.length];
-    const nomeBase = NOMI_FISSI_PER_ETICA_E_SKILL[eticaBase][skill];
+const generateDefaultArchetipi = (count) =>
+  Array.from({ length: count }, (_, i) => ({ id: i + 1, skill: SKILL_LEVELS[i % SKILL_LEVELS.length] }));
 
-    return {
-      id: i + 1,
-      nomeOriginale: nomeBase,
-      skill,
-      eticaBase,
-      desc: DIZIONARIO[lang].descSquadra(skill)
-    };
-  });
+// Nome e testi si calcolano al render, così cambiare lingua non richiede di rigenerare la partita.
+const nomeSquadra = (lang, s) => `${DIZIONARIO[lang].teamPrefix} ${s.id} (${NOMI_FISSI_PER_ETICA_E_SKILL[s.etica][s.skill][lang]})`;
+
+// I log vengono salvati come eventi strutturati {k, a} (chiave + argomenti) e tradotti solo al render.
+const LOG = new Proxy({}, {
+  get: (_, k) => {
+    const v = DIZIONARIO.it.logs[k];
+    return typeof v === 'function' ? (...a) => ({ k, a }) : { k, a: [] };
+  }
+});
+const testoLog = (lang, log) => {
+  if (typeof log === 'string') return log;
+  const v = DIZIONARIO[lang].logs[log.k];
+  if (typeof v !== 'function') return v;
+  return v(...log.a.map(x => (x && x.__team ? nomeSquadra(lang, x) : x)));
 };
 
 const f = (k, it, zh, h, min, max, step, u = '') => ({ k, it, zh, h, min, max, step, u });
@@ -411,6 +465,18 @@ const PROFILI_INFO = {
   EGOISTA: { it: 'Egoisti', zh: '利己队', d: { it: 'Puntano al proprio vantaggio: tentazione sempre, mai solidali, non aiutano.', zh: '只顾自身利益：总是屈服、从不互助、不帮助他人。' }, stile: 'bg-rose-500/20 text-rose-300 border-rose-500/50' }
 };
 
+const ETICA_BADGE = {
+  VIRTUOSA: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  OPPORTUNISTA: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  EGOISTA: 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+};
+
+// Variazione rispetto alla tappa precedente: la freccia comunica la direzione anche senza il colore.
+function Delta({ v, title }) {
+  if (!v) return null;
+  return <span title={title} className={`ml-1 text-[10px] font-bold ${v > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{v > 0 ? '▲' : '▼'}{Math.abs(v)}</span>;
+}
+
 function ConfigField({ def, value, defaultValue, onChange, lang }) {
   const modificato = value !== defaultValue;
   const [bozza, setBozza] = useState(String(value));
@@ -419,7 +485,9 @@ function ConfigField({ def, value, defaultValue, onChange, lang }) {
   const conferma = (v) => {
     const n = Number(v);
     if (v.trim() === '' || Number.isNaN(n)) { setBozza(String(value)); return; }
-    onChange(limita(n));
+    const ok = limita(Math.round(n));
+    onChange(ok);
+    setBozza(String(ok));
   };
   const btn = 'w-9 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 flex items-center justify-center cursor-pointer transition active:scale-95';
   return (
@@ -464,6 +532,7 @@ export default function App() {
   const [profiloAttivo, setProfiloAttivo] = useState('VIRTUOSA');
   const [confermaReset, setConfermaReset] = useState(false);
   const [paramsAvvio, setParamsAvvio] = useState('');
+  const [riavvio, setRiavvio] = useState(0); // incrementato per far ripartire la partita con i parametri aggiornati
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(params)); } catch (e) { console.error('Impossibile salvare i parametri', e); }
@@ -479,8 +548,8 @@ export default function App() {
   const ripristina = (paths) => paths.forEach(p => setParam(p, getVal(DEFAULT_PARAMS, p)));
   const handleResetToDefault = () => {
     setParams(JSON.parse(JSON.stringify(DEFAULT_PARAMS)));
-    setArchetipiConfig(generateDefaultArchetipi(DEFAULT_PARAMS.numSquadre, lang));
     setConfermaReset(false);
+    setRiavvio(n => n + 1);
   };
   const configCambiata = paramsAvvio !== '' && paramsAvvio !== firma(params);
 
@@ -490,18 +559,21 @@ export default function App() {
     return 7;
   }, [params.numSquadre]);
 
-  const [archetipiConfig, setArchetipiConfig] = useState(() => generateDefaultArchetipi(14, 'it'));
   const [currentTappa, setCurrentTappa] = useState(0); 
   const [viewedTappa, setViewedTappa] = useState(0); 
   const [activeTab, setActiveTab] = useState('simulatore'); 
   const [squadre, setSquadre] = useState([]);
   const [history, setHistory] = useState([]);
   const [eventLogs, setEventLogs] = useState([]);
+  const [ordinaPer, setOrdinaPer] = useState('id');
+  const [filtroEtica, setFiltroEtica] = useState('TUTTE');
+  const [vistaTabellone, setVistaTabellone] = useState('card');
 
   const handleSelectNumSquadre = (count) => {
     if (![12, 14, 16].includes(count)) return;
+    if (count === params.numSquadre) return;
     setParams(p => ({ ...p, numSquadre: count }));
-    setArchetipiConfig(generateDefaultArchetipi(count, lang));
+    setRiavvio(n => n + 1);
   };
 
   const getDistribuzioneEsatta = useCallback((globalPerc, totalTeams) => {
@@ -565,8 +637,8 @@ export default function App() {
   }, []);
 
   const distribuzioneEticaLive = useMemo(() => {
-    return getDistribuzioneEsatta(params.eticitaGlobalePerc, archetipiConfig.length);
-  }, [getDistribuzioneEsatta, params.eticitaGlobalePerc, archetipiConfig.length]);
+    return getDistribuzioneEsatta(params.eticitaGlobalePerc, params.numSquadre);
+  }, [getDistribuzioneEsatta, params.eticitaGlobalePerc, params.numSquadre]);
 
   const getEticaEffettivaSquadra = useCallback((index, totalTeams, globalPerc) => {
     const counts = getDistribuzioneEsatta(globalPerc, totalTeams);
@@ -574,12 +646,6 @@ export default function App() {
     if (index < counts.VIRTUOSA + counts.OPPORTUNISTA) return 'OPPORTUNISTA';
     return 'EGOISTA';
   }, [getDistribuzioneEsatta]);
-
-  const getDatiDinamiciSquadra = useCallback((index, totalTeams, globalPerc, skill) => {
-    const etica = getEticaEffettivaSquadra(index, totalTeams, globalPerc);
-    const nomeObj = NOMI_FISSI_PER_ETICA_E_SKILL[etica][skill];
-    return { etica, nome: nomeObj[lang] };
-  }, [getEticaEffettivaSquadra, lang]);
 
   const scheduleMatchmaking = useMemo(() => {
     const n = params.numSquadre;
@@ -620,18 +686,13 @@ export default function App() {
   }, [params.numSquadre, maxTappe]);
 
   const initializeTeams = useCallback(() => {
-    const currentArchetipi = generateDefaultArchetipi(params.numSquadre, lang);
-    setArchetipiConfig(currentArchetipi);
-
-    const newSquadre = currentArchetipi.map((arch, idx) => {
+    const n = params.numSquadre;
+    const newSquadre = generateDefaultArchetipi(n).map(arch => {
       const randCoins = [10, 20, 30][Math.floor(Math.random() * 3)];
-      const { etica, nome } = getDatiDinamiciSquadra(idx, params.numSquadre, params.eticitaGlobalePerc, arch.skill);
-
       return {
         ...arch,
-        nome: `${t.teamPrefix} ${arch.id} (${nome})`,
-        etica,
-        monete: params.moneteBase + randCoins, 
+        etica: getEticaEffettivaSquadra(arch.id - 1, n, params.eticitaGlobalePerc),
+        monete: params.moneteBase + randCoins,
         puntiSuccesso: 0,
         puntiMisericordia: 0,
         haSceltoDiCredere: false,
@@ -649,26 +710,13 @@ export default function App() {
     setViewedTappa(0);
     setHistory([{ tappa: 0, squadre: newSquadre.map(s => ({ ...s })) }]);
     setEventLogs([{ tappa: 0, testo: `Simulazione inizializzata!` }]);
-  }, [params, lang, getDatiDinamiciSquadra, t.teamPrefix]);
+  }, [params, getEticaEffettivaSquadra]);
 
+  // Parte al montaggio e ogni volta che `riavvio` cambia (nuovo numero di squadre, reset). Non dipende dalla lingua.
   useEffect(() => {
     initializeTeams();
-  }, [lang]);
-
-  useEffect(() => {
-    setSquadre(prevSquadre => {
-      if (prevSquadre.length === 0) return prevSquadre;
-      return prevSquadre.map((sq, idx) => {
-        const { etica, nome } = getDatiDinamiciSquadra(idx, params.numSquadre, params.eticitaGlobalePerc, sq.skill);
-        return {
-          ...sq,
-          etica,
-          nome: `${t.teamPrefix} ${sq.id} (${nome})`,
-          desc: t.descSquadra(sq.skill)
-        };
-      });
-    });
-  }, [params.eticitaGlobalePerc, params.numSquadre, getDatiDinamiciSquadra, lang, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [riavvio]);
 
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   const rnd = (perc) => Math.random() * 100 < perc;
@@ -686,9 +734,9 @@ export default function App() {
   };
 
   const simulateSingleTappa = (tappaNumber, currentSquadreMap) => {
-    const L = DIZIONARIO[lang].logs;
+    const L = LOG;
     const clima = params.eticitaGlobalePerc;
-    const tot = archetipiConfig.length;
+    const tot = currentSquadreMap.size;
     const currentLogs = [{ tappa: tappaNumber, testo: `Tappa ${tappaNumber}` }];
 
     const map = new Map();
@@ -709,6 +757,7 @@ export default function App() {
       const A = mk(tA, tB), B = mk(tB, tA);
       A.oppS = B; B.oppS = A;
       const entrambi = [A, B];
+      const ref = (S) => ({ __team: true, id: S.t.id, skill: S.t.skill, etica: S.etica });
       // l'ordine casuale evita che la squadra "A" sia sempre avvantaggiata nelle fasi sequenziali
       const ordineCasuale = () => (Math.random() < 0.5 ? [A, B] : [B, A]);
       entrambi.forEach(S => S.log.push(S.t.ePuntualeInQuestaTappa ? L.inOrario(params.bonusPuntualita) : L.inRitardo));
@@ -720,15 +769,15 @@ export default function App() {
         if (opp.monete >= importo) {
           if (rnd(pf.aiutoPerc) && (opp.monete > pf.aiutoSeMoneteOltre || clima > pf.aiutoSeClimaOltre)) {
             opp.monete -= importo; opp.puntiMisericordia += misAcc; t.monete += importo;
-            S.log.push(L.aiutoRicevuto(importo, opp.nome));
-            oppS.log.push(L.aiutoDato(importo, t.nome, misAcc));
+            S.log.push(L.aiutoRicevuto(importo, ref(oppS)));
+            oppS.log.push(L.aiutoDato(importo, ref(S), misAcc));
             return;
           }
           opp.puntiMisericordia -= params.penalitaRifiuto;
-          S.log.push(L.aiutoRifiutato(opp.nome));
-          oppS.log.push(L.aiutoNegato(t.nome, params.penalitaRifiuto));
+          S.log.push(L.aiutoRifiutato(ref(oppS)));
+          oppS.log.push(L.aiutoNegato(ref(S), params.penalitaRifiuto));
         } else {
-          S.log.push(L.senzaFondi(opp.nome));
+          S.log.push(L.senzaFondi(ref(oppS)));
         }
         if (params.chiesaSoccorre === 1) { t.monete += importo; S.log.push(L.soccorsoChiesa(importo)); }
       };
@@ -764,7 +813,7 @@ export default function App() {
         if (S.t.monete < params.costoTentazione) return false;
         if (clima < pf.tentSempreSeClimaSotto || S.t.monete < pf.tentSeMoneteSotto) return true;
         if (pf.tentBasePerc <= 0) return false;
-        return rnd(clamp(pf.tentBasePerc * (1 - (pf.tentSensClima / 100) * (clima / 100)), 1, 100));
+        return rnd(clamp(pf.tentBasePerc * (1 - (pf.tentSensClima / 100) * (clima / 100)), 0, 100));
       };
       const base = [vuoleBase(A), vuoleBase(B)];
       entrambi.forEach((S, i) => {
@@ -792,8 +841,8 @@ export default function App() {
         X.t.monete += params.moneteVittoriaSolidale;
         W.t.puntiMisericordia += params.misericordiaVittoriaSolidale;
         W.t.donazioniEffettuate += 1;
-        W.log.push(L.solidaleVinta(params.puntiVittoriaSolidale, params.moneteVittoriaSolidale, params.misericordiaVittoriaSolidale, X.t.nome));
-        X.log.push(L.solidaleRicevuta(W.t.nome, params.moneteVittoriaSolidale));
+        W.log.push(L.solidaleVinta(params.puntiVittoriaSolidale, params.moneteVittoriaSolidale, params.misericordiaVittoriaSolidale, ref(X)));
+        X.log.push(L.solidaleRicevuta(ref(W), params.moneteVittoriaSolidale));
       } else {
         W.t.puntiSuccesso += params.puntiVittoriaEgoista;
         W.t.monete += params.moneteVittoriaEgoista;
@@ -807,7 +856,7 @@ export default function App() {
           if (!t.haSceltoDiCredere) { t.haPagatoTutteLeDecime = false; return; }
           const salta = t.monete < pf.decimaSaltaSeMoneteSotto;
           if (!salta && t.monete >= d) { t.monete -= d; S.log.push(L.versataDecima(d)); }
-          else if (!salta && pf.vendeSuccessoPerDecima === 1 && t.puntiSuccesso > 0) {
+          else if (!salta && pf.vendeSuccessoPerDecima === 1 && t.puntiSuccesso > 0 && t.monete + params.moneteDaVenditaSuccesso >= d) {
             t.puntiSuccesso -= 1; t.monete += params.moneteDaVenditaSuccesso - d;
             S.log.push(L.vendutoSuccesso(params.moneteDaVenditaSuccesso)); S.log.push(L.versataDecima(d));
           } else { t.haPagatoTutteLeDecime = false; S.log.push(L.decimaNonVersata); }
@@ -823,7 +872,8 @@ export default function App() {
         });
       }
 
-      entrambi.forEach(S => S.t.storiaTappe.push({ tappa: tappaNumber, vs: S.opp.nome, monete: S.t.monete, successo: S.t.puntiSuccesso, misericordia: S.t.puntiMisericordia, logs: S.log }));
+      entrambi.forEach(S => { S.t.etica = S.etica; }); // l'etica effettivamente usata in questa tappa
+      entrambi.forEach(S => S.t.storiaTappe.push({ tappa: tappaNumber, vs: ref(S.oppS), monete: S.t.monete, successo: S.t.puntiSuccesso, misericordia: S.t.puntiMisericordia, logs: S.log }));
     });
 
     return { updatedMap: map, logs: currentLogs };
@@ -868,10 +918,23 @@ export default function App() {
     setEventLogs(prev => [...prev, ...newLogsEntries]);
   };
 
+  // Etica mostrata = quella USATA nell'ultima tappa giocata. L'etica prevista dal clima attuale vale dalla prossima tappa.
+  // Prima della tappa 1 non c'è nulla di "usato": si mostra direttamente quella prevista.
   const displayedSquadre = useMemo(() => {
     const snapshot = history.find(h => h.tappa === viewedTappa);
-    return snapshot ? snapshot.squadre : squadre;
-  }, [history, viewedTappa, squadre]);
+    const base = snapshot ? snapshot.squadre : squadre;
+    const prec = history.find(h => h.tappa === viewedTappa - 1);
+    const precMap = prec ? new Map(prec.squadre.map(x => [x.id, x])) : null;
+    const conDelta = base.map(sq => {
+      const p = precMap ? precMap.get(sq.id) : null;
+      return { ...sq, delta: p ? { monete: sq.monete - p.monete, successo: sq.puntiSuccesso - p.puntiSuccesso, misericordia: sq.puntiMisericordia - p.puntiMisericordia } : null };
+    });
+    if (viewedTappa !== currentTappa) return conDelta;
+    const prevista = (sq) => getEticaEffettivaSquadra(sq.id - 1, base.length, params.eticitaGlobalePerc);
+    return conDelta.map(sq => currentTappa === 0
+      ? { ...sq, etica: prevista(sq), eticaProssima: null }
+      : { ...sq, eticaProssima: currentTappa < maxTappe ? prevista(sq) : null });
+  }, [history, viewedTappa, currentTappa, maxTappe, squadre, params.eticitaGlobalePerc, getEticaEffettivaSquadra]);
 
   const classificaApparente = useMemo(() => {
     return [...displayedSquadre].sort((a, b) => b.puntiSuccesso - a.puntiSuccesso || b.monete - a.monete);
@@ -880,6 +943,87 @@ export default function App() {
   const classificaReale = useMemo(() => {
     return [...displayedSquadre].sort((a, b) => b.puntiMisericordia - a.puntiMisericordia || b.monete - a.monete);
   }, [displayedSquadre]);
+
+  const rangoApp = useMemo(() => new Map(classificaApparente.map((x, i) => [x.id, i + 1])), [classificaApparente]);
+  const rangoReale = useMemo(() => new Map(classificaReale.map((x, i) => [x.id, i + 1])), [classificaReale]);
+
+  const squadreVisibili = useMemo(() => {
+    const l = filtroEtica === 'TUTTE' ? [...displayedSquadre] : displayedSquadre.filter(x => x.etica === filtroEtica);
+    const cmp = {
+      id: (a, b) => a.id - b.id,
+      successo: (a, b) => b.puntiSuccesso - a.puntiSuccesso || b.monete - a.monete,
+      misericordia: (a, b) => b.puntiMisericordia - a.puntiMisericordia || b.monete - a.monete,
+      monete: (a, b) => b.monete - a.monete
+    };
+    return l.sort(cmp[ordinaPer]);
+  }, [displayedSquadre, filtroEtica, ordinaPer]);
+
+  // Cosa è successo nella tappa visualizzata, contando i log strutturati di tutte le squadre.
+  const riepilogoTappa = useMemo(() => {
+    if (viewedTappa === 0) return null;
+    const r = { tentazioni: 0, donazioni: 0, rifiuti: 0, chiesa: 0, bancarotte: 0, fede: 0 };
+    displayedSquadre.forEach(x => {
+      const st = x.storiaTappe.find(e => e.tappa === viewedTappa);
+      if (!st) return;
+      st.logs.forEach(l => {
+        switch (l && l.k) {
+          case 'tentazioneAcquistata': r.tentazioni++; break;
+          case 'aiutoDato': case 'solidaleVinta': r.donazioni++; break;
+          case 'aiutoNegato': r.rifiuti++; break;
+          case 'soccorsoChiesa': r.chiesa++; break;
+          case 'crisi3Bancarotta': case 'crisiBancarotta': case 'ingressoNonPagabile': r.bancarotte++; break;
+          case 'sceltoFede': r.fede++; break;
+          default: break;
+        }
+      });
+    });
+    return r;
+  }, [displayedSquadre, viewedTappa]);
+
+  const finito = currentTappa === maxTappe && viewedTappa === maxTappe;
+  const riepilogoFinale = useMemo(() => {
+    if (!finito || classificaApparente.length === 0) return null;
+    const primoApp = classificaApparente[0];
+    const primoReale = classificaReale[0];
+    const profili = PROFILI_ETICI.map(e => {
+      const g = displayedSquadre.filter(x => x.etica === e);
+      const avg = (fn) => (g.length ? g.reduce((a, x) => a + fn(x), 0) / g.length : null);
+      return { etica: e, n: g.length, monete: avg(x => x.monete), successo: avg(x => x.puntiSuccesso), misericordia: avg(x => x.puntiMisericordia) };
+    });
+    return { primoApp, primoReale, rangoRealeDelPrimoApp: rangoReale.get(primoApp.id), profili };
+  }, [finito, classificaApparente, classificaReale, displayedSquadre, rangoReale]);
+
+  const renderFinale = () => {
+    if (!riepilogoFinale) return null;
+    const { primoApp, primoReale, rangoRealeDelPrimoApp, profili } = riepilogoFinale;
+    const coincidono = primoApp.id === primoReale.id;
+    const fmt = (v) => (v === null ? '—' : v.toFixed(1));
+    return (
+      <section className="bg-gradient-to-br from-slate-900 via-slate-900/90 to-amber-950/30 border border-amber-500/30 rounded-3xl p-6 md:p-8 shadow-2xl space-y-5">
+        <h2 className="text-xl font-extrabold text-white">{t.titoloFinale}</h2>
+        <p className="text-sm text-slate-200 leading-relaxed max-w-3xl">
+          {coincidono
+            ? t.finaleCoincidono(nomeSquadra(lang, primoApp))
+            : t.finaleDivergono(nomeSquadra(lang, primoApp), rangoRealeDelPrimoApp, nomeSquadra(lang, primoReale))}
+        </p>
+        <div>
+          <h3 className="text-xs font-bold text-slate-400 mb-2">{t.profiliMedie}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {profili.map(pr => (
+              <div key={pr.etica} className={`rounded-2xl border p-4 ${ETICA_BADGE[pr.etica]}`}>
+                <div className="text-xs font-extrabold">{t.eticaNames[pr.etica]} · {pr.n} {t.squadreWord}</div>
+                <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+                  <div><span className="text-[10px] text-slate-400 font-bold block">{t.monete}</span><span className="text-base font-extrabold text-white">{fmt(pr.monete)}</span></div>
+                  <div><span className="text-[10px] text-slate-400 font-bold block">{t.successo}</span><span className="text-base font-extrabold text-white">{fmt(pr.successo)}</span></div>
+                  <div><span className="text-[10px] text-slate-400 font-bold block">{t.misericordia}</span><span className="text-base font-extrabold text-white">{fmt(pr.misericordia)}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  };
 
   const chartData = useMemo(() => {
     return history.map(h => {
@@ -1057,6 +1201,10 @@ export default function App() {
               </div>
             </div>
 
+            <div className="mb-3 space-y-1">
+              <p className="text-[11px] text-amber-300/90">{currentTappa >= maxTappe ? t.climaNotaFine : t.climaNotaProssima(currentTappa + 1)}</p>
+              <p className="text-[11px] font-bold text-slate-400">{t.prossimaLabel}</p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
               <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-3.5 shadow-md">
                 <div className="p-3 bg-emerald-500/20 rounded-xl text-emerald-400"><ShieldCheck className="w-5 h-5" /></div>
@@ -1096,43 +1244,114 @@ export default function App() {
 
         {/* TAB 1. TABELLONE SQUADRE */}
         {activeTab === 'simulatore' && (
+          <div className="space-y-5">
+            {riepilogoFinale && (
+              <button onClick={() => setActiveTab('classifica')} className="w-full text-left bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/40 rounded-2xl px-4 py-3 text-xs text-amber-200 cursor-pointer flex items-center justify-between gap-3">
+                <span><b className="text-amber-100">{t.simulazioneConclusa}</b> {t.vediRisultato}</span>
+                <ChevronRight className="w-4 h-4 shrink-0" />
+              </button>
+            )}
+
+            {riepilogoTappa && (() => {
+              const tema = temaTappa(viewedTappa, maxTappe);
+              const voci = Object.entries(riepilogoTappa).filter(([, n]) => Number(n) > 0);
+              return (
+                <div className="bg-slate-900/70 border border-slate-800 rounded-2xl px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
+                  <span className="font-bold text-white">{tema.icon} {t.tappaN(viewedTappa)} · {lang === 'zh' ? tema.zh : tema.it}</span>
+                  {voci.map(([k, n]) => <span key={k} className="text-slate-300"><b className="text-amber-300">{n}</b> {t.riepilogoLabels[k]}</span>)}
+                  {voci.length === 0 && <span className="text-slate-500">{t.riepilogoVuoto}</span>}
+                </div>
+              );
+            })()}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div role="group" aria-label={t.ordinaPer} className="flex items-center gap-1.5 bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800 overflow-x-auto">
+                <span className="text-xs font-bold text-slate-400 px-2 shrink-0">{t.ordinaPer}</span>
+                {[['id', t.ordId], ['successo', t.successo], ['misericordia', t.misericordia], ['monete', t.monete]].map(([k, label]) => (
+                  <button key={k} aria-pressed={ordinaPer === k} onClick={() => setOrdinaPer(k)} className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer transition ${ordinaPer === k ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>{label}</button>
+                ))}
+              </div>
+              <div role="group" aria-label={t.eticaCol} className="flex items-center gap-1.5 bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800 overflow-x-auto">
+                {['TUTTE', ...PROFILI_ETICI].map(e => (
+                  <button key={e} aria-pressed={filtroEtica === e} onClick={() => setFiltroEtica(e)} className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer transition ${filtroEtica === e ? (e === 'TUTTE' ? 'bg-indigo-600 text-white' : `${ETICA_BADGE[e]} border`) : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>{e === 'TUTTE' ? t.filtroTutte : t.eticaNames[e]}</button>
+                ))}
+              </div>
+              <div role="group" className="flex items-center gap-1.5 bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800 ml-auto">
+                <button aria-pressed={vistaTabellone === 'card'} onClick={() => setVistaTabellone('card')} className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition ${vistaTabellone === 'card' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}><LayoutGrid className="w-3.5 h-3.5" /> {t.vistaCard}</button>
+                <button aria-pressed={vistaTabellone === 'tabella'} onClick={() => setVistaTabellone('tabella')} className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition ${vistaTabellone === 'tabella' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}><TableIcon className="w-3.5 h-3.5" /> {t.vistaTabella}</button>
+              </div>
+            </div>
+
+            {vistaTabellone === 'tabella' ? (
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-x-auto shadow-2xl">
+                <table className="w-full text-xs tabular-nums">
+                  <thead>
+                    <tr className="text-left text-slate-400 border-b border-slate-800">
+                      <th className="px-4 py-3 font-bold">{t.squadraCol}</th>
+                      <th className="px-3 py-3 font-bold">{t.eticaCol}</th>
+                      <th className="px-3 py-3 font-bold">{t.skillLabel}</th>
+                      <th className="px-3 py-3 font-bold text-right">{t.monete}</th>
+                      <th className="px-3 py-3 font-bold text-right">{t.successo}</th>
+                      <th className="px-3 py-3 font-bold text-right">{t.misericordia}</th>
+                      <th className="px-4 py-3 font-bold">{t.avversarioCol}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {squadreVisibili.map(s => {
+                      const ultimo = s.storiaTappe.find(e => e.tappa === viewedTappa);
+                      return (
+                        <tr key={s.id} className="border-b border-slate-800/60 hover:bg-slate-800/40">
+                          <td className="px-4 py-2.5 font-semibold text-slate-100 whitespace-nowrap">{nomeSquadra(lang, s)} {s.haSceltoDiCredere && <span title={t.credente}>🙏</span>}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap">
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${ETICA_BADGE[s.etica]}`}>{t.eticaNames[s.etica]}</span>
+                            {s.eticaProssima && s.eticaProssima !== s.etica && <span title={t.prossimaTitle} className={`ml-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-dashed ${ETICA_BADGE[s.eticaProssima]}`}>→ {t.eticaNames[s.eticaProssima]}</span>}
+                          </td>
+                          <td className="px-3 py-2.5 text-slate-300">{t.skillNames[s.skill]}</td>
+                          <td className="px-3 py-2.5 text-right font-extrabold text-amber-400">{s.monete}<Delta v={s.delta?.monete} /></td>
+                          <td className="px-3 py-2.5 text-right font-extrabold text-indigo-400">{s.puntiSuccesso}<Delta v={s.delta?.successo} /></td>
+                          <td className="px-3 py-2.5 text-right font-extrabold text-emerald-400">{s.puntiMisericordia}<Delta v={s.delta?.misericordia} /></td>
+                          <td className="px-4 py-2.5 text-slate-400 whitespace-nowrap">{ultimo ? nomeSquadra(lang, ultimo.vs) : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {displayedSquadre.map(s => (
+            {squadreVisibili.map(s => (
               <div key={s.id} className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-3xl p-5 flex flex-col justify-between shadow-xl hover:border-slate-700 transition-all group">
                 <div>
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="font-bold text-slate-100 text-base group-hover:text-indigo-300 transition-colors">{s.nome}</h3>
-                      <div className="flex gap-1.5 mt-1.5">
-                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border uppercase tracking-wider ${
-                          s.etica === 'VIRTUOSA' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
-                          s.etica === 'EGOISTA' ? 'bg-rose-500/15 text-rose-400 border-rose-500/30' :
-                          'bg-amber-500/15 text-amber-400 border-amber-500/30'
-                        }`}>{t.eticaNames[s.etica]}</span>
+                      <h3 className="font-bold text-slate-100 text-base group-hover:text-indigo-300 transition-colors">{nomeSquadra(lang, s)}</h3>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border uppercase tracking-wider ${ETICA_BADGE[s.etica]}`}>{t.eticaNames[s.etica]}</span>
+                        {s.eticaProssima && s.eticaProssima !== s.etica && (
+                          <span title={t.prossimaTitle} className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-dashed uppercase tracking-wider ${ETICA_BADGE[s.eticaProssima]}`}>→ {t.eticaNames[s.eticaProssima]}</span>
+                        )}
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-800 bg-slate-950 text-slate-300">
                           {t.skillLabel}: {t.skillNames[s.skill]}
                         </span>
                       </div>
                     </div>
                     {s.haSceltoDiCredere && (
-                      <span className="p-1.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-base shadow-sm" title="Credente">🙏</span>
+                      <span className="p-1.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-base shadow-sm" title={t.credente}>🙏</span>
                     )}
                   </div>
-
-                  <p className="text-xs text-slate-400 mb-4 italic leading-relaxed">{s.desc}</p>
 
                   <div className="grid grid-cols-3 gap-2 py-3 border-y border-slate-800 text-center bg-slate-950/50 rounded-2xl px-2">
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block mb-0.5">{t.monete}</span>
-                      <span className="text-base font-extrabold text-amber-400">{s.monete}</span>
+                      <span className="text-base font-extrabold text-amber-400">{s.monete}<Delta v={s.delta?.monete} /></span>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block mb-0.5">{t.successo}</span>
-                      <span className="text-base font-extrabold text-indigo-400">{s.puntiSuccesso}</span>
+                      <span className="text-base font-extrabold text-indigo-400">{s.puntiSuccesso}<Delta v={s.delta?.successo} /></span>
                     </div>
                     <div className="bg-emerald-950/30 border border-emerald-500/20 rounded-xl p-0.5">
                       <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block mb-0.5">{t.misericordia}</span>
-                      <span className="text-base font-extrabold text-emerald-400">{s.puntiMisericordia}</span>
+                      <span className="text-base font-extrabold text-emerald-400">{s.puntiMisericordia}<Delta v={s.delta?.misericordia} /></span>
                     </div>
                   </div>
 
@@ -1141,12 +1360,12 @@ export default function App() {
                       <div className="bg-slate-950/60 p-3 rounded-2xl border border-slate-800 space-y-1.5 shadow-inner">
                         <span className="text-xs font-bold text-indigo-300 block pb-1.5 border-b border-slate-800 flex items-center justify-between">
                           <span>{t.tappaN(s.storiaTappe.length)}</span>
-                          <span className="text-[10px] text-slate-400 font-normal">vs {s.storiaTappe[s.storiaTappe.length - 1].vs}</span>
+                          <span className="text-[10px] text-slate-400 font-normal">vs {nomeSquadra(lang, s.storiaTappe[s.storiaTappe.length - 1].vs)}</span>
                         </span>
                         {s.storiaTappe[s.storiaTappe.length - 1].logs.map((log, idx) => (
                           <div key={idx} className="text-[11px] text-slate-300 flex items-start gap-1">
                             <span className="text-indigo-400 mt-0.5">•</span>
-                            <span className="leading-tight">{log}</span>
+                            <span className="leading-tight">{testoLog(lang, log)}</span>
                           </div>
                         ))}
                       </div>
@@ -1157,6 +1376,8 @@ export default function App() {
                 </div>
               </div>
             ))}
+          </div>
+            )}
           </div>
         )}
 
@@ -1197,16 +1418,20 @@ export default function App() {
 
         {/* TAB 3. CLASSIFICHE */}
         {activeTab === 'classifica' && (
+          <div className="space-y-6">
+          {renderFinale()}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-4">
               <h3 className="font-bold text-white pb-3 border-b border-slate-800 flex items-center gap-2">
                 <Award className="w-5 h-5 text-indigo-400" /> {t.classificaApparente}
               </h3>
-              <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+              <div className="space-y-2.5">
                 {classificaApparente.map((s, idx) => (
                   <div key={s.id} className="flex justify-between items-center py-3 px-4 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs shadow-sm">
                     <span className="font-extrabold text-slate-400 w-6 text-sm">{idx + 1}.</span>
-                    <span className="font-semibold text-slate-200 flex-1 truncate">{s.nome}</span>
+                    <span className="font-semibold text-slate-200 flex-1 truncate">{nomeSquadra(lang, s)}</span>
+                    <span className={`hidden sm:inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-md border mr-2 ${ETICA_BADGE[s.etica]}`}>{t.eticaNames[s.etica]}</span>
+                    <span className="text-[10px] text-slate-500 mr-2 shrink-0">{t.rangoReale(rangoReale.get(s.id))}</span>
                     <span className="text-indigo-400 font-bold px-3 py-1 bg-indigo-500/10 rounded-xl mr-2">{s.puntiSuccesso} {t.successo}</span>
                     <span className="text-amber-400 font-extrabold w-20 text-right">{s.monete} 💰</span>
                   </div>
@@ -1218,17 +1443,21 @@ export default function App() {
               <h3 className="font-bold text-white pb-3 border-b border-slate-800 flex items-center gap-2">
                 <Heart className="w-5 h-5 text-emerald-400 fill-current" /> {t.classificaReale}
               </h3>
-              <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+              <div className="space-y-2.5">
                 {classificaReale.map((s, idx) => (
                   <div key={s.id} className={`flex justify-between items-center py-3 px-4 rounded-2xl text-xs border shadow-sm ${idx === 0 ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-100 ring-1 ring-emerald-500/20' : 'bg-slate-950/70 border-slate-800 text-slate-200'}`}>
                     <span className="font-extrabold text-emerald-400 w-6 text-sm">{idx + 1}.</span>
-                    <span className="font-semibold flex-1 truncate">{s.nome}</span>
-                    <span className="text-emerald-400 font-bold px-3 py-1 bg-emerald-500/10 rounded-xl mr-2">{s.puntiMisericordia} {t.misericordia}</span>
+                    <span className="font-semibold flex-1 truncate">{nomeSquadra(lang, s)}</span>
+                    <span className={`hidden sm:inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-md border mr-2 ${ETICA_BADGE[s.etica]}`}>{t.eticaNames[s.etica]}</span>
+                    <span className="text-[10px] text-slate-500 mr-1 shrink-0">{t.rangoApp(rangoApp.get(s.id))}</span>
+                    <Delta v={rangoApp.get(s.id) - (idx + 1)} title={t.spostamentoTitle} />
+                    <span className="ml-2 text-emerald-400 font-bold px-3 py-1 bg-emerald-500/10 rounded-xl mr-2">{s.puntiMisericordia} {t.misericordia}</span>
                     <span className="text-amber-400 font-extrabold w-20 text-right">{s.monete} 💰</span>
                   </div>
                 ))}
               </div>
             </div>
+          </div>
           </div>
         )}
 
