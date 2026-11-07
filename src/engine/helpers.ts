@@ -1,4 +1,5 @@
-import { DEFAULT_PARAMS, STORAGE_KEY, DIZIONARIO, NOMI_FISSI_PER_ETICA_E_SKILL, SKILL_LEVELS, PROFILI_ETICI } from '../constants/dizionario';
+import { DEFAULT_PARAMS } from '../constants/configurazione';
+import { STORAGE_KEY, DIZIONARIO, NOMI_FISSI_PER_ETICA_E_SKILL, SKILL_LEVELS, PROFILI_ETICI } from '../constants/dizionario';
 
 export const caricaParams = () => {
   const m = JSON.parse(JSON.stringify(DEFAULT_PARAMS));
