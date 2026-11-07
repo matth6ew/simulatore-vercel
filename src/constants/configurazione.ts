@@ -1,4 +1,12 @@
 // src/constants/configurazione.ts
+import { Users, Scale, Swords, Heart, Compass } from 'lucide-react';
+import { PROFILI_ETICI } from './dizionario';
+
+export const PROFILI_DEFAULT = {
+  VIRTUOSA: { probFedePerc: 100, fedeSensClina: 0, fedeSicuraSensClinaOltre: 101, tentBasePerc: 0, tentSensClina: 0, tentSempreSensClinaSotto: -101, tentSeMoneteSotto: 0, tentReagisce: 0, solSenzaTentPerc: 100, solSensClina: 0, solContentPerc: 15, solContentClinaMin: 48, solContentMoneteMin: 0, aiutoPerc: 100, aiutoSeMoneteOltre: 0, aiutoSensClinaOltre: -101, decinaSaltaSeMoneteSotto: 0, vendoSuccessoPerDecina: 1 },
+  OPPORTUNISTA: { probFedePerc: 50, fedeSensClina: 50, fedeSicuraSensClinaOltre: 101, tentBasePerc: 70, tentSensClina: 100, tentSempreSensClinaSotto: -101, tentSeMoneteSotto: 15, tentReagisce: 1, solSenzaTentPerc: 80, solSensClina: 28, solContentPerc: 100, solContentClinaMin: -101, solContentMoneteMin: 28, aiutoPerc: 100, aiutoSeMoneteOltre: 28, aiutoSensClinaOltre: 28, decinaSaltaSeMoneteSotto: 15, vendoSuccessoPerDecina: 0 },
+  EGOISTA: { probFedePerc: 0, fedeSensClina: 0, fedeSicuraSensClinaOltre: 80, tentBasePerc: 100, tentSensClina: 0, tentSempreSensClinaSotto: 101, tentSeMoneteSotto: 0, tentReagisce: 0, solSenzaTentPerc: 0, solSensClina: 0, solContentPerc: 0, solContentClinaMin: -101, solContentMoneteMin: 0, aiutoPerc: 0, aiutoSeMoneteOltre: 0, aiutoSensClinaOltre: 101, decinaSaltaSeMoneteSotto: 0, vendoSuccessoPerDecina: 0 }
+};
 
 export interface ConfigParam {
   id: string;
@@ -11,7 +19,21 @@ export interface ConfigParam {
   unit?: string;
 }
 
-// Funzione di supporto per definire i parametri più rapidamente
+export const DEFAULT_PARAMS = {
+  numSquadre: 14,
+  moneteBase: 8,
+  bonusPuntoUnito: 4,
+  probabilitaPuntualitaPerc: 70,
+  costoIngressoTappa: 15,
+  costoTentazione: 5,
+  costoMisericordiaTentazione: 3,
+  costoCrisiTappa6: 30,
+  costoCrisiFinale: 50,
+  valoreDecinaFissa: 5,
+  moneteDaVenditaSuccesso: 40,
+  puntivittoriaFondoUnito: 2,
+};
+
 const f = (
   id: string,
   label: string,
