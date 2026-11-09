@@ -59,9 +59,7 @@ const temaTappa = (round, max, p) => {
   // Se una regola è disattivata la descrizione lo dice, invece di raccontare un evento che non accade.
   if (round === 2 && p.usaFede !== 1) return { ...base, d: { it: 'Tappa normale: Fede e Decima sono disattivate.', zh: '普通阶段：信仰与什一税已停用。' } };
   if (round === 3 && p.usaCatastrofi !== 1) return { ...base, d: { it: 'Tappa normale: la catastrofe è disattivata.', zh: '普通阶段：灾难已停用。' } };
-  if (round === max && p.usaCatastrofi !== 1) return { ...base, d: p.moneteNulleAFine === 1
-    ? { it: 'Ultima tappa: nessuna crisi finale. A fine gioco le monete non valgono nulla.', zh: '最后阶段：没有终极危机。游戏结束后金币作废。' }
-    : { it: 'Ultima tappa: la crisi finale è disattivata.', zh: '最后阶段：终极危机已停用。' } };
+  if (round === max && p.usaCatastrofi !== 1) return { ...base, d: { it: 'Ultima tappa: la crisi finale è disattivata.', zh: '最后阶段：终极危机已停用。' } };
   return base;
 };
 
@@ -120,8 +118,8 @@ const DIZIONARIO = {
     partecipantiBerger: (num, tappe) => `${num} Squadre partecipanti • ${tappe} Tappe senza pause`,
     roundTappa: (r) => `Tappa ${r}`,
     correnteBadge: "Corrente",
-    classificaApparente: "Classifica Apparente (Punti Successo)",
-    classificaReale: "Classifica Reale (Punti Misericordia)",
+    classificaApparente: "Classifica Pubblica (Monete)",
+    classificaReale: "Classifica Nascosta (Punti Misericordia, spareggio: monete)",
     moneteMedieEtico: "Monete Medie per Profilo Etico",
     successoMedieEtico: "Punti Successo Medi per Profilo Etico",
     misericordiaMedieEtico: "Misericordia Media per Profilo Etico",
@@ -153,7 +151,6 @@ const DIZIONARIO = {
     finaleBadgeParita: "Attenzione: c'è un pari merito sull'ultimo posto utile. Le squadre in parità sono segnate con 🏅~.",
     badgeTitle: "Riceve il badge",
     badgeParitaTitle: "Pari merito sul limite del badge: il posto si divide",
-    moneteNulleTitle: "A fine gioco le monete non valgono nulla",
     analisiColBadge: "Con badge",
     analisiGraficoBadge: "Squadre del profilo con badge",
     analisiNotaBadge: "Con badge = percentuale delle squadre di quel profilo che arriva tra le prime N per Misericordia. Se più squadre sono pari merito sul limite, i posti rimasti si dividono in parti uguali.",
@@ -179,13 +176,13 @@ const DIZIONARIO = {
     analisiAnnulla: "Annulla",
     analisiProgresso: (d, tot) => `${d} / ${tot} partite`,
     analisiObsoleta: "Regole o clima sono cambiati dopo questa analisi: rilancia per aggiornarla.",
-    analisiDivergenza: (p, n) => `In ${p}% delle ${n} partite la squadra prima per Successo non è la prima per Misericordia.`,
+    analisiDivergenza: (p, n) => `In ${p}% delle ${n} partite la squadra prima per Monete non è la prima per Misericordia.`,
     analisiTabellaTitolo: "Medie per profilo etico (± variazione tra partite)",
     analisiColSquadre: "Squadre",
-    analisiColApp: "1° per Successo",
+    analisiColApp: "1° per Monete",
     analisiColReale: "1° per Misericordia",
     analisiGrafico: "Primo posto e badge per profilo etico",
-    analisiGraficoApp: "Primo per Successo",
+    analisiGraficoApp: "Primo per Monete",
     analisiGraficoReale: "Primo per Misericordia",
     analisiNotaSD: "± indica la deviazione standard della media del profilo tra le partite. Un profilo con più squadre ha più possibilità di arrivare primo: confrontalo con la colonna Squadre. In caso di parità perfetta (stessi punti e stesse monete) il primo posto è diviso in parti uguali tra le squadre a pari merito.",
     avversarioCol: "Ultimo avversario",
@@ -194,12 +191,12 @@ const DIZIONARIO = {
     simulazioneConclusa: "Simulazione conclusa.",
     vediRisultato: "Vedi chi ha vinto davvero nelle Classifiche",
     titoloFinale: "Risultato finale: chi vince davvero?",
-    finaleCoincidono: (n) => `${n} è prima sia per Successo sia per Misericordia: qui apparenza e realtà coincidono.`,
-    finaleDivergono: (a, r, b) => `${a} vince per Successo, ma è solo ${r}ª per Misericordia. In testa alla classifica reale c'è ${b}.`,
+    finaleCoincidono: (n) => `${n} è prima sia per Monete sia per Misericordia: qui apparenza e realtà coincidono.`,
+    finaleDivergono: (a, r, b) => `${a} è la più ricca (classifica pubblica), ma è solo ${r}ª per Misericordia. In testa alla classifica nascosta c'è ${b}.`,
     profiliMedie: "Media per profilo etico",
-    rangoReale: (n) => `Reale #${n}`,
-    rangoApp: (n) => `Apparente #${n}`,
-    spostamentoTitle: "Posizioni guadagnate (▲) o perse (▼) rispetto alla classifica apparente",
+    rangoReale: (n) => `Nascosta #${n}`,
+    rangoApp: (n) => `Pubblica #${n}`,
+    spostamentoTitle: "Posizioni guadagnate (▲) o perse (▼) rispetto alla classifica pubblica",
     eticaNames: { VIRTUOSA: "VIRTUOSA", OPPORTUNISTA: "OPPORTUNISTA", EGOISTA: "EGOISTA" },
     skillNames: { ALTA: "ALTA", MEDIA: "MEDIA", BASSA: "BASSA" },
     descSquadra: (skill) => `Squadra con abilità nei minigiochi ${skill.toLowerCase()}.`,
@@ -209,7 +206,6 @@ const DIZIONARIO = {
       premioVincitore: (m, p) => `🏆 Vittoria (+${m} monete${p ? `, +${p} successo` : ''})`,
       premioPerdente: (m) => `Sconfitto nel minigioco (+${m} monete)`,
       offertaFatta: (c, m) => `🙏 Ha offerto ${c} monete (+${m} misericordia)`,
-      moneteNulle: "💨 Fine gioco: le monete non valgono più nulla",
       inOrario: (b) => `⚡ In orario (+${b} monete)`,
       inRitardo: "⏰ In ritardo (0 monete)",
       costoIngresso: (c) => `Costo ingresso (-${c} monete)`,
@@ -271,8 +267,8 @@ const DIZIONARIO = {
     partecipantiBerger: (num, tappe) => `${num}支参赛队伍 • ${tappe}个阶段无轮空`,
     roundTappa: (r) => `阶段 ${r}`,
     correnteBadge: "当前",
-    classificaApparente: "表观排行榜（成功点数）",
-    classificaReale: "真实排行榜（良善忠心分点数）",
+    classificaApparente: "公开排行榜（金币）",
+    classificaReale: "隐藏排行榜（良善忠心分，平局以金币决胜）",
     moneteMedieEtico: "各伦理档案平均金币",
     successoMedieEtico: "各伦理档案平均成功点数",
     misericordiaMedieEtico: "各伦理档案平均良善忠心分",
@@ -304,7 +300,6 @@ const DIZIONARIO = {
     finaleBadgeParita: "注意：最后一个徽章名额出现并列。并列队伍标记为 🏅~。",
     badgeTitle: "获得徽章",
     badgeParitaTitle: "徽章名额并列：名额平分",
-    moneteNulleTitle: "游戏结束后金币作废",
     analisiColBadge: "获得徽章",
     analisiGraficoBadge: "该类型获得徽章的队伍比例",
     analisiNotaBadge: "获得徽章 = 该类型队伍进入良善忠心分前 N 名的比例。若多支队伍在名额边界并列，剩余名额平分。",
@@ -330,13 +325,13 @@ const DIZIONARIO = {
     analisiAnnulla: "取消",
     analisiProgresso: (d, tot) => `${d} / ${tot} 局`,
     analisiObsoleta: "规则或气候在本次分析后已更改：请重新运行以更新。",
-    analisiDivergenza: (p, n) => `在 ${n} 局中，有 ${p}% 的对局里成功点数第一的队伍不是良善忠心分第一。`,
+    analisiDivergenza: (p, n) => `在 ${n} 局中，有 ${p}% 的对局里金币第一的队伍不是良善忠心分第一。`,
     analisiTabellaTitolo: "各伦理类型平均值（± 局间波动）",
     analisiColSquadre: "队伍数",
-    analisiColApp: "成功第一",
+    analisiColApp: "金币第一",
     analisiColReale: "良善忠心分第一",
     analisiGrafico: "各类型夺冠与获徽章比例",
-    analisiGraficoApp: "成功点数第一",
+    analisiGraficoApp: "金币第一",
     analisiGraficoReale: "良善忠心分第一",
     analisiNotaSD: "± 表示各局中该类型平均值的标准差。队伍更多的类型更容易夺冠，请与“队伍数”列对照。若出现完全并列（积分与金币都相同），第一名由并列队伍平分。",
     avversarioCol: "上一对手",
@@ -345,12 +340,12 @@ const DIZIONARIO = {
     simulazioneConclusa: "模拟已结束。",
     vediRisultato: "在排行榜中查看真正的赢家",
     titoloFinale: "最终结果：谁才是真正的赢家？",
-    finaleCoincidono: (n) => `${n} 在成功点数和良善忠心分上均排第一：表象与真实一致。`,
-    finaleDivergono: (a, r, b) => `${a} 以成功点数获胜，但良善忠心分仅排第 ${r}。真实排行榜第一是 ${b}。`,
+    finaleCoincidono: (n) => `${n} 在金币和良善忠心分上均排第一：表象与真实一致。`,
+    finaleDivergono: (a, r, b) => `${a} 金币最多（公开排行榜），但良善忠心分仅排第 ${r}。隐藏排行榜第一是 ${b}。`,
     profiliMedie: "各伦理类型平均值",
-    rangoReale: (n) => `真实 #${n}`,
-    rangoApp: (n) => `表观 #${n}`,
-    spostamentoTitle: "相对表观排行榜上升(▲)或下降(▼)的名次",
+    rangoReale: (n) => `隐藏 #${n}`,
+    rangoApp: (n) => `公开 #${n}`,
+    spostamentoTitle: "相对公开排行榜上升(▲)或下降(▼)的名次",
     eticaNames: { VIRTUOSA: "美德", OPPORTUNISTA: "机会主义", EGOISTA: "利己" },
     skillNames: { ALTA: "高", MEDIA: "中", BASSA: "低" },
     descSquadra: (skill) => `具备${skill === 'ALTA' ? '高' : skill === 'MEDIA' ? '中' : '低'}能力的小游戏队伍。`,
@@ -360,7 +355,6 @@ const DIZIONARIO = {
       premioVincitore: (m, p) => `🏆 获胜 (+${m} 金币${p ? `，+${p} 成功` : ''})`,
       premioPerdente: (m) => `小游戏败北 (+${m} 金币)`,
       offertaFatta: (c, m) => `🙏 奉献 ${c} 金币 (+${m} 良善忠心分)`,
-      moneteNulle: "💨 游戏结束：金币作废",
       inOrario: (b) => `⚡ 准时 (+${b} 金币)`,
       inRitardo: "⏰ 迟到 (0 金币)",
       costoIngresso: (c) => `准入成本 (-${c} 金币)`,
@@ -401,6 +395,7 @@ const DEFAULT_PARAMS = {
   numSquadre: 14,
   moneteBase: 10,
   iniziaCasuale: 0,
+  moneteCasualiMax: 10,
   bonusPuntualita: 4,
   probabilitaPuntualitaPerc: 70,
   costoIngressoTappa: 2,
@@ -434,7 +429,6 @@ const DEFAULT_PARAMS = {
   misericordiaOfferta: 1,
   misericordiaOnesta: 1,
   squadrePremiate: 7,
-  moneteNulleAFine: 1,
   // --- interruttori delle regole vecchie (spente di default, i loro valori restano salvati) ---
   usaSuccesso: 0,
   usaCatastrofi: 0,
@@ -503,16 +497,16 @@ const CONFIG_SEZIONI = [
   { id: 'regole', it: 'Regole attive', zh: '启用的规则', icon: ToggleRight, campi: [
     bl('usaPremiSemplici', 'Premio fisso a vincitore e perdente', '胜负方固定奖励', 'Attivo: vincitore e sconfitto ricevono un premio fisso (vedi Economia) e la vittoria solidale non esiste. Disattivo: tornano le vecchie vittorie egoista / solidale.'),
     bl('usaOfferta', 'Offerta di una parte del premio', '奉献部分奖励', 'Attivo: dopo lo scontro una squadra può offrire una percentuale del premio e ottenere Misericordia.'),
-    bl('iniziaCasuale', 'Monete iniziali casuali', '随机初始金币', 'Attivo: a ogni squadra si aggiunge un extra casuale di 10, 20 o 30 monete. Disattivo: tutte partono dalla stessa cifra.'),
-    bl('moneteNulleAFine', 'Le monete non valgono nulla a fine gioco', '游戏结束后金币作废', 'Attivo: le monete non contano nelle classifiche né per gli spareggi (a parità di punti le squadre restano pari merito).'),
-    bl('usaSuccesso', 'Punti Successo', '成功点数', 'Disattivo: nessun punto Successo, nessuna vendita di Successo e nessuna classifica apparente.'),
+    bl('iniziaCasuale', 'Monete iniziali casuali', '随机初始金币', 'Attivo: ogni squadra parte con le monete iniziali ± una variazione casuale (la scegli in Partita). Disattivo: tutte partono dalla stessa cifra.'),
+    bl('usaSuccesso', 'Punti Successo', '成功点数', 'Disattivo: nessun punto Successo e nessuna vendita di Successo. I punti Successo non contano in nessuna classifica: la pubblica è per Monete, la nascosta per Misericordia.'),
     bl('usaCatastrofi', 'Catastrofi (tappa 3 e crisi finale)', '灾难（第3阶段与终极危机）', 'Disattivo: nessuna tassa a metà gioco e nessuna crisi finale.'),
     bl('usaFede', 'Fede e Decima', '信仰与什一税', 'Disattivo: nessuna scelta della Fede alla tappa 2 e nessuna Decima.'),
     bl('usaPuntualita', 'Bonus puntualità', '准时奖励', 'Disattivo: nessun bonus per chi arriva in orario.'),
     bl('usaCostoTentazione', 'La Tentazione costa monete', '诱惑需要金币', 'Disattivo: cedere alla tentazione (imbrogliare) non costa monete, toglie solo Misericordia.')
   ] },
   { id: 'partita', it: 'Partita', zh: '对局', icon: Users, campi: [
-    f('moneteBase', 'Monete iniziali (uguali per tutte)', '初始金币（各队相同）', 'Se l\'inizio casuale è attivo, si somma un extra di 10, 20 o 30 monete per squadra.', 0, 200, 5, '💰'),
+    f('moneteBase', 'Monete iniziali', '初始金币', 'Uguali per tutte, a meno che l\'inizio casuale sia attivo.', 0, 200, 5, '💰'),
+    f('moneteCasualiMax', 'Variazione casuale delle monete iniziali (±)', '初始金币随机浮动（±）', 'Ogni squadra parte con le monete iniziali più un numero casuale intero tra −X e +X (mai sotto 0). Es. base 10 e ±10: ogni squadra parte con un valore da 0 a 20.', 0, 100, 1, '💰', { se: ['iniziaCasuale'] }),
     f('squadrePremiate', 'Squadre che ricevono il badge', '获得徽章的队伍数', 'Le prime N per Misericordia. Nelle analisi, un pari merito sul limite divide il posto in parti uguali.', 1, 16, 1, '🏅'),
     f('probabilitaPuntualitaPerc', 'Probabilità di essere puntuali', '准时概率', 'Ogni squadra, a ogni tappa, può arrivare in orario e prendere il bonus.', 0, 100, 5, '%', { se: ['usaPuntualita'] }),
     f('bonusPuntualita', 'Bonus puntualità', '准时奖励', 'Monete guadagnate arrivando in orario.', 0, 50, 1, '💰', { se: ['usaPuntualita'] })
@@ -702,10 +696,9 @@ export default function App() {
 
   // Regole attive: derivate dai parametri
   const succOn = params.usaSuccesso === 1;
-  const moneteNulle = params.moneteNulleAFine === 1;
   const ordEff = !succOn && ordinaPer === 'successo' ? 'misericordia' : ordinaPer;
-  // Spareggio sulle monete: se a fine gioco non valgono nulla, i punti uguali restano pari merito.
-  const tieMonete = (a, b) => (moneteNulle ? 0 : b.monete - a.monete);
+  // Spareggio sulle monete (usato dalla classifica nascosta, quella per Misericordia).
+  const tieMonete = (a, b) => b.monete - a.monete;
   // Quanto del badge spetta a ogni squadra (1 = lo ha, 0 = no, in mezzo = pari merito sul limite).
   const badgeFrazioni = (squadreFinali) => {
     const out = new Map();
@@ -842,11 +835,13 @@ export default function App() {
   const creaSquadre = useCallback(() => {
     const n = params.numSquadre;
     return generateDefaultArchetipi(n).map(arch => {
-      const randCoins = params.iniziaCasuale === 1 ? [10, 20, 30][Math.floor(Math.random() * 3)] : 0;
+      // Variazione intera uniforme tra -X e +X; le monete di partenza non scendono mai sotto 0.
+      const X = Math.max(0, Math.round(params.moneteCasualiMax));
+      const randCoins = params.iniziaCasuale === 1 ? Math.floor(Math.random() * (2 * X + 1)) - X : 0;
       return {
         ...arch,
         etica: getEticaEffettivaSquadra(arch.id - 1, n, params.eticitaGlobalePerc),
-        monete: params.moneteBase + randCoins,
+        monete: Math.max(0, params.moneteBase + randCoins),
         puntiSuccesso: 0,
         puntiMisericordia: 0,
         haSceltoDiCredere: false,
@@ -1072,7 +1067,6 @@ export default function App() {
         });
       }
 
-      if (tappaNumber === maxTappe && params.moneteNulleAFine === 1) entrambi.forEach(S => S.log.push(L.moneteNulle));
       entrambi.forEach(S => { S.t.etica = S.etica; }); // l'etica effettivamente usata in questa tappa
       entrambi.forEach(S => S.t.storiaTappe.push({ tappa: tappaNumber, vs: ref(S.oppS), monete: S.t.monete, successo: S.t.puntiSuccesso, misericordia: S.t.puntiMisericordia, logs: S.log }));
     });
@@ -1129,11 +1123,17 @@ export default function App() {
     }
     return r;
   };
-  // Squadre al primo posto a pari merito (stessi punti e stesse monete, come nelle classifiche).
-  // Non si sceglie in base all'ordine dell'array: ordinando, vincerebbe sempre l'id più basso, cioè una virtuosa.
-  const inTesta = (finali, campoPunti) => {
-    const ord = [...finali].sort((a, b) => b[campoPunti] - a[campoPunti] || tieMonete(a, b));
-    return ord.filter(x => x[campoPunti] === ord[0][campoPunti] && (moneteNulle || x.monete === ord[0].monete));
+  // Squadre al primo posto a pari merito. Non si sceglie in base all'ordine dell'array:
+  // ordinando, vincerebbe sempre l'id più basso, cioè una virtuosa.
+  // Classifica pubblica: contano solo le monete.
+  const inTestaPubblica = (finali) => {
+    const max = Math.max(...finali.map(x => x.monete));
+    return finali.filter(x => x.monete === max);
+  };
+  // Classifica nascosta: punti Misericordia, con le monete come spareggio.
+  const inTestaNascosta = (finali) => {
+    const ord = [...finali].sort((a, b) => b.puntiMisericordia - a.puntiMisericordia || tieMonete(a, b));
+    return ord.filter(x => x.puntiMisericordia === ord[0].puntiMisericordia && x.monete === ord[0].monete);
   };
 
   const eseguiBatch = () => {
@@ -1160,8 +1160,8 @@ export default function App() {
       for (let tp = 1; tp <= maxTappe; tp++) mappa = simulateSingleTappa(tp, mappa).updatedMap;
       const finali = Array.from(mappa.values());
       // Pareggio perfetto: il primo posto si divide in parti uguali tra le squadre a pari merito.
-      const topApp = inTesta(finali, 'puntiSuccesso');
-      const topReale = inTesta(finali, 'puntiMisericordia');
+      const topApp = inTestaPubblica(finali);
+      const topReale = inTestaNascosta(finali);
       // Probabilità che i due "primi" siano la stessa squadra, scegliendo a caso tra i pari merito.
       const stessaSquadra = topApp.filter(x => topReale.some(y => y.id === x.id)).length / (topApp.length * topReale.length);
       divergenze += 1 - stessaSquadra;
@@ -1217,15 +1217,17 @@ export default function App() {
       : { ...sq, eticaProssima: currentTappa < maxTappe ? prevista(sq) : null });
   }, [history, viewedTappa, currentTappa, maxTappe, squadre, params.eticitaGlobalePerc, getEticaEffettivaSquadra]);
 
+  // Classifica pubblica: solo monete.
   const classificaApparente = useMemo(() => {
-    return [...displayedSquadre].sort((a, b) => b.puntiSuccesso - a.puntiSuccesso || tieMonete(a, b));
-  }, [displayedSquadre, moneteNulle]);
+    return [...displayedSquadre].sort((a, b) => b.monete - a.monete);
+  }, [displayedSquadre]);
 
+  // Classifica nascosta: Misericordia, spareggio monete.
   const classificaReale = useMemo(() => {
     return [...displayedSquadre].sort((a, b) => b.puntiMisericordia - a.puntiMisericordia || tieMonete(a, b));
-  }, [displayedSquadre, moneteNulle]);
+  }, [displayedSquadre]);
 
-  const badgeMap = useMemo(() => badgeFrazioni(displayedSquadre), [displayedSquadre, params.squadrePremiate, moneteNulle]);
+  const badgeMap = useMemo(() => badgeFrazioni(displayedSquadre), [displayedSquadre, params.squadrePremiate]);
 
   const rangoApp = useMemo(() => new Map(classificaApparente.map((x, i) => [x.id, i + 1])), [classificaApparente]);
   const rangoReale = useMemo(() => new Map(classificaReale.map((x, i) => [x.id, i + 1])), [classificaReale]);
@@ -1239,7 +1241,7 @@ export default function App() {
       monete: (a, b) => b.monete - a.monete
     };
     return l.sort(cmp[ordEff]);
-  }, [displayedSquadre, filtroEtica, ordEff, moneteNulle]);
+  }, [displayedSquadre, filtroEtica, ordEff]);
 
   // Cosa è successo nella tappa visualizzata, contando i log strutturati di tutte le squadre.
   const riepilogoTappa = useMemo(() => {
@@ -1265,7 +1267,6 @@ export default function App() {
   }, [displayedSquadre, viewedTappa]);
 
   const finito = currentTappa === maxTappe && viewedTappa === maxTappe;
-  const moneteVoid = moneteNulle && finito ? 'line-through opacity-50' : '';
   const riepilogoFinale = useMemo(() => {
     if (!finito || classificaApparente.length === 0) return null;
     const primoApp = classificaApparente[0];
@@ -1288,14 +1289,13 @@ export default function App() {
     const fb = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
     return (
       <section className="bg-gradient-to-br from-slate-900 via-slate-900/90 to-amber-950/30 border border-amber-500/30 rounded-3xl p-6 md:p-8 shadow-2xl space-y-5">
-        <h2 className="text-xl font-extrabold text-white">{succOn ? t.titoloFinale : t.titoloFinaleBadge}</h2>
+        <h2 className="text-xl font-extrabold text-white">{t.titoloFinale}</h2>
         <p className="text-sm text-slate-200 leading-relaxed max-w-3xl">
-          {!succOn
-            ? t.finaleBadge(badgeTot, displayedSquadre.length)
-            : coincidono
-              ? t.finaleCoincidono(nomeSquadra(lang, primoApp))
-              : t.finaleDivergono(nomeSquadra(lang, primoApp), rangoRealeDelPrimoApp, nomeSquadra(lang, primoReale))}
+          {coincidono
+            ? t.finaleCoincidono(nomeSquadra(lang, primoApp))
+            : t.finaleDivergono(nomeSquadra(lang, primoApp), rangoRealeDelPrimoApp, nomeSquadra(lang, primoReale))}
         </p>
+        <p className="text-xs text-slate-300">{t.finaleBadge(badgeTot, displayedSquadre.length)}</p>
         {parita && <p className="text-xs text-amber-300">{t.finaleBadgeParita}</p>}
         <div>
           <h3 className="text-xs font-bold text-slate-400 mb-2">{t.profiliMedie}</h3>
@@ -1304,7 +1304,7 @@ export default function App() {
               <div key={pr.etica} className={`rounded-2xl border p-4 ${ETICA_BADGE[pr.etica]}`}>
                 <div className="text-xs font-extrabold">{t.eticaNames[pr.etica]} · {pr.n} {t.squadreWord}</div>
                 <div className={`grid ${succOn ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mt-3 text-center`}>
-                  <div><span className="text-[10px] text-slate-400 font-bold block">{t.monete}</span><span className={`text-base font-extrabold text-white ${moneteVoid}`} title={moneteNulle ? t.moneteNulleTitle : undefined}>{fmt(pr.monete)}</span></div>
+                  <div><span className="text-[10px] text-slate-400 font-bold block">{t.monete}</span><span className={`text-base font-extrabold text-white`}>{fmt(pr.monete)}</span></div>
                   {succOn && <div><span className="text-[10px] text-slate-400 font-bold block">{t.successo}</span><span className="text-base font-extrabold text-white">{fmt(pr.successo)}</span></div>}
                   <div><span className="text-[10px] text-slate-400 font-bold block">{t.misericordia}</span><span className="text-base font-extrabold text-white">{fmt(pr.misericordia)}</span></div>
                   <div><span className="text-[10px] text-slate-400 font-bold block">{t.badge}</span><span className="text-base font-extrabold text-white">🏅 {fb(pr.badge)}/{pr.n}</span></div>
@@ -1605,7 +1605,7 @@ export default function App() {
                             {s.eticaProssima && s.eticaProssima !== s.etica && <span title={t.prossimaTitle} className={`ml-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-dashed ${ETICA_BADGE[s.eticaProssima]}`}>→ {t.eticaNames[s.eticaProssima]}</span>}
                           </td>
                           <td className="px-3 py-2.5 text-slate-300">{t.skillNames[s.skill]}</td>
-                          <td className={`px-3 py-2.5 text-right font-extrabold text-amber-400 ${moneteVoid}`}>{s.monete}<Delta v={s.delta?.monete} /></td>
+                          <td className={`px-3 py-2.5 text-right font-extrabold text-amber-400`}>{s.monete}<Delta v={s.delta?.monete} /></td>
                           {succOn && <td className="px-3 py-2.5 text-right font-extrabold text-indigo-400">{s.puntiSuccesso}<Delta v={s.delta?.successo} /></td>}
                           <td className="px-3 py-2.5 text-right font-extrabold text-emerald-400">{s.puntiMisericordia}<Delta v={s.delta?.misericordia} /></td>
                           <td className="px-4 py-2.5 text-slate-400 whitespace-nowrap">{ultimo ? nomeSquadra(lang, ultimo.vs) : '—'}</td>
@@ -1641,7 +1641,7 @@ export default function App() {
                   <div className={`grid ${succOn ? 'grid-cols-3' : 'grid-cols-2'} gap-2 py-3 border-y border-slate-800 text-center bg-slate-950/50 rounded-2xl px-2`}>
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block mb-0.5">{t.monete}</span>
-                      <span className={`text-base font-extrabold text-amber-400 ${moneteVoid}`}>{s.monete}<Delta v={s.delta?.monete} /></span>
+                      <span className={`text-base font-extrabold text-amber-400`}>{s.monete}<Delta v={s.delta?.monete} /></span>
                     </div>
                     {succOn && (
                       <div>
@@ -1720,8 +1720,7 @@ export default function App() {
         {activeTab === 'classifica' && (
           <div className="space-y-6">
           {renderFinale()}
-          <div className={`grid grid-cols-1 ${succOn ? 'lg:grid-cols-2' : ''} gap-6`}>
-            {succOn && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-4">
               <h3 className="font-bold text-white pb-3 border-b border-slate-800 flex items-center gap-2">
                 <Award className="w-5 h-5 text-indigo-400" /> {t.classificaApparente}
@@ -1733,13 +1732,12 @@ export default function App() {
                     <span className="font-semibold text-slate-200 flex-1 truncate">{nomeSquadra(lang, s)}</span>
                     <span className={`hidden sm:inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-md border mr-2 ${ETICA_BADGE[s.etica]}`}>{t.eticaNames[s.etica]}</span>
                     <span className="text-[10px] text-slate-500 mr-2 shrink-0">{t.rangoReale(rangoReale.get(s.id))}</span>
-                    <span className="text-indigo-400 font-bold px-3 py-1 bg-indigo-500/10 rounded-xl mr-2">{s.puntiSuccesso} {t.successo}</span>
-                    <span className={`text-amber-400 font-extrabold w-20 text-right ${moneteVoid}`} title={moneteNulle ? t.moneteNulleTitle : undefined}>{s.monete} 💰</span>
+                    {succOn && <span className="text-[10px] text-slate-500 mr-2 shrink-0">{s.puntiSuccesso} {t.successo}</span>}
+                    <span className="text-amber-400 font-bold px-3 py-1 bg-amber-500/10 rounded-xl">{s.monete} 💰</span>
                   </div>
                 ))}
               </div>
             </div>
-            )}
 
             <div className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-4">
               <h3 className="font-bold text-white pb-3 border-b border-slate-800 flex items-center gap-2">
@@ -1751,10 +1749,10 @@ export default function App() {
                     <span className="font-extrabold text-emerald-400 w-6 text-sm">{idx + 1}.</span>
                     <span className="font-semibold flex-1 truncate">{nomeSquadra(lang, s)}{badgeMap.get(s.id) > 0 && <span title={badgeMap.get(s.id) < 1 ? t.badgeParitaTitle : t.badgeTitle} className="ml-2">🏅{badgeMap.get(s.id) < 1 ? '~' : ''}</span>}</span>
                     <span className={`hidden sm:inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-md border mr-2 ${ETICA_BADGE[s.etica]}`}>{t.eticaNames[s.etica]}</span>
-                    {succOn && <span className="text-[10px] text-slate-500 mr-1 shrink-0">{t.rangoApp(rangoApp.get(s.id))}</span>}
-                    {succOn && <Delta v={rangoApp.get(s.id) - (idx + 1)} title={t.spostamentoTitle} />}
+                    <span className="text-[10px] text-slate-500 mr-1 shrink-0">{t.rangoApp(rangoApp.get(s.id))}</span>
+                    <Delta v={rangoApp.get(s.id) - (idx + 1)} title={t.spostamentoTitle} />
                     <span className="ml-2 text-emerald-400 font-bold px-3 py-1 bg-emerald-500/10 rounded-xl mr-2">{s.puntiMisericordia} {t.misericordia}</span>
-                    <span className={`text-amber-400 font-extrabold w-20 text-right ${moneteVoid}`} title={moneteNulle ? t.moneteNulleTitle : undefined}>{s.monete} 💰</span>
+                    <span className={`text-amber-400 font-extrabold w-20 text-right`}>{s.monete} 💰</span>
                   </div>
                 ))}
               </div>
@@ -1879,7 +1877,7 @@ export default function App() {
               {r && (
                 <section className="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6">
                   {obsoleta && <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 text-xs text-amber-200">{t.analisiObsoleta}</div>}
-                  {succOn && <p className="text-sm text-slate-200 max-w-3xl leading-relaxed">{t.analisiDivergenza(r.divergenzaPerc, r.n)}</p>}
+                  <p className="text-sm text-slate-200 max-w-3xl leading-relaxed">{t.analisiDivergenza(r.divergenzaPerc, r.n)}</p>
 
                   <div>
                     <h3 className="text-xs font-bold text-slate-400 mb-2">{t.analisiTabellaTitolo}</h3>
@@ -1892,7 +1890,7 @@ export default function App() {
                             <th className="px-3 py-3 font-bold text-right">{t.monete}</th>
                             {succOn && <th className="px-3 py-3 font-bold text-right">{t.successo}</th>}
                             <th className="px-3 py-3 font-bold text-right">{t.misericordia}</th>
-                            {succOn && <th className="px-3 py-3 font-bold text-right">{t.analisiColApp}</th>}
+                            <th className="px-3 py-3 font-bold text-right">{t.analisiColApp}</th>
                             <th className="px-3 py-3 font-bold text-right">{t.analisiColReale}</th>
                             <th className="px-4 py-3 font-bold text-right">{t.analisiColBadge}</th>
                           </tr>
@@ -1905,7 +1903,7 @@ export default function App() {
                               <td className="px-3 py-2.5 text-right font-bold text-amber-400">{pm(x.monete)}</td>
                               {succOn && <td className="px-3 py-2.5 text-right font-bold text-indigo-400">{pm(x.successo)}</td>}
                               <td className="px-3 py-2.5 text-right font-bold text-emerald-400">{pm(x.misericordia)}</td>
-                              {succOn && <td className="px-3 py-2.5 text-right text-slate-200">{x.n ? `${x.primoApp}%` : '—'}</td>}
+                              <td className="px-3 py-2.5 text-right text-slate-200">{x.n ? `${x.primoApp}%` : '—'}</td>
                               <td className="px-3 py-2.5 text-right text-slate-200">{x.n ? `${x.primoReale}%` : '—'}</td>
                               <td className="px-4 py-2.5 text-right text-slate-200">{x.n ? `${x.badgePerc}%` : '—'}</td>
                             </tr>
@@ -1925,7 +1923,7 @@ export default function App() {
                           <YAxis stroke="#94a3b8" unit="%" domain={[0, 100]} />
                           <Tooltip formatter={(v) => `${v}%`} contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '16px' }} />
                           <Legend />
-                          {succOn && <Bar dataKey="app" name={t.analisiGraficoApp} fill="#6366F1" radius={[6, 6, 0, 0]} />}
+                          <Bar dataKey="app" name={t.analisiGraficoApp} fill="#6366F1" radius={[6, 6, 0, 0]} />
                           <Bar dataKey="reale" name={t.analisiGraficoReale} fill="#10B981" radius={[6, 6, 0, 0]} />
                           <Bar dataKey="badge" name={t.analisiGraficoBadge} fill="#F59E0B" radius={[6, 6, 0, 0]} />
                         </BarChart>
